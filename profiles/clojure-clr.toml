@@ -1,6 +1,7 @@
-# clr.tools.nrepl on ClojureCLR, a port of babashka.nrepl. Needs cljr on
-# PATH:
+# clr.tools.nrepl on ClojureCLR, a port of babashka.nrepl. Needs cljr
+# and Clojure.Main (which cljr hands off to) on PATH:
 #
+#   dotnet tool install -g Clojure.Main
 #   dotnet tool install -g Clojure.Cljr --prerelease
 #
 # With .NET from Homebrew, also export

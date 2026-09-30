@@ -46,6 +46,8 @@ jobs:
           dotnet-version: '10.0.x'
       - if: matrix.profile == 'clojure-clr'
         run: |
+          # cljr resolves the dependencies, then hands off to Clojure.Main.
+          dotnet tool install -g Clojure.Main
           dotnet tool install -g Clojure.Cljr --prerelease
           echo "$HOME/.dotnet/tools" >> "$GITHUB_PATH"
 
