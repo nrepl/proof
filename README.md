@@ -15,7 +15,7 @@ places where the two diverge are collected in
 
 ## Usage
 
-You'll need Go 1.22 or newer to build it:
+You'll need Go 1.23 or newer to build it:
 
 ```
 go build -o bin/proof ./cmd/proof

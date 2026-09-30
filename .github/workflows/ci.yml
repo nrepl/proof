@@ -11,12 +11,15 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest]
+        # The oldest Go we support (keep in sync with go.mod) and the newest.
+        go: ['1.23', stable]
+    name: test (${{ matrix.os }}, go ${{ matrix.go }})
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-go@v7
         with:
-          go-version-file: go.mod
+          go-version: ${{ matrix.go }}
       - name: Check formatting
         run: |
           unformatted=$(gofmt -l .)
