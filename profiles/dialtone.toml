@@ -1,0 +1,39 @@
+# dialtone, the Erlang nREPL server from nrepl/nrepl-beam. Expects the
+# dialtone launcher (dialtone/bin/dialtone) on PATH.
+name = "dialtone (Erlang)"
+homepage = "https://github.com/nrepl/nrepl-beam"
+
+[launch]
+command = ["dialtone", "--no-port-file"]
+port-pattern = 'nREPL server started on port (\d+)'
+startup-timeout = "60s"
+
+[snippets.value]
+code = "1 + 2."
+value = "3"
+
+[snippets.stdout]
+code = 'io:format("proof"), ok.'
+out = "proof"
+
+[snippets.stderr]
+code = 'io:format(standard_error, "proof", []), ok.'
+err = "proof"
+
+[snippets.throw]
+code = "error(proof)."
+
+[snippets.define]
+code = "ProofAnswer = 42."
+use = "ProofAnswer."
+value = "42"
+
+# Variable bindings are per session.
+[snippets.session-state]
+code = "ProofMarker = proof_marker."
+use = "ProofMarker."
+value = "proof_marker"
+
+[snippets.multiple]
+code = "1. 2."
+values = ["1", "2"]

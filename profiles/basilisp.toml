@@ -1,0 +1,41 @@
+# The nREPL server that ships with Basilisp, a Clojure dialect on Python.
+name = "Basilisp"
+homepage = "https://github.com/basilisp-lang/basilisp"
+
+[launch]
+command = ["basilisp", "nrepl-server"]
+port-pattern = 'nREPL server started on port (\d+)'
+startup-timeout = "30s"
+
+[capabilities]
+namespaces = true
+
+[snippets.value]
+code = "(+ 1 2)"
+value = "3"
+
+[snippets.stdout]
+code = '(print "proof")'
+out = "proof"
+
+[snippets.stderr]
+code = '(binding [*out* *err*] (print "proof"))'
+err = "proof"
+
+[snippets.throw]
+code = '(throw (ex-info "proof" {}))'
+
+[snippets.define]
+code = "(def proof-answer 42)"
+use = "proof-answer"
+value = "42"
+
+# Leaves session-local state behind (*1 is per session).
+[snippets.session-state]
+code = ":proof-marker"
+use = "*1"
+value = ":proof-marker"
+
+[snippets.multiple]
+code = "1 2"
+values = ["1", "2"]
