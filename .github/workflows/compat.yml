@@ -1,0 +1,122 @@
+# Runs proof against every server with a profile and publishes the
+# compatibility matrix in the job summary. Servers failing checks is the
+# expected state of the world, so only harness problems fail this workflow.
+name: Compatibility
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '0 5 * * *'
+  workflow_dispatch:
+
+jobs:
+  run:
+    name: ${{ matrix.profile }}
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        profile: [clojure, babashka, clojure-clr, basilisp, jank, dialtone]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+      - run: go build -o bin/proof ./cmd/proof
+
+      - if: matrix.profile == 'clojure'
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+      - if: matrix.profile == 'clojure'
+        uses: DeLaGuardo/setup-clojure@13.7.0
+        with:
+          cli: latest
+
+      - if: matrix.profile == 'babashka'
+        uses: DeLaGuardo/setup-clojure@13.7.0
+        with:
+          bb: latest
+
+      - if: matrix.profile == 'clojure-clr'
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: '10.0.x'
+      - if: matrix.profile == 'clojure-clr'
+        run: |
+          dotnet tool install -g Clojure.Cljr --prerelease
+          echo "$HOME/.dotnet/tools" >> "$GITHUB_PATH"
+
+      - if: matrix.profile == 'basilisp'
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.13'
+      - if: matrix.profile == 'basilisp'
+        run: pip install basilisp
+
+      - if: matrix.profile == 'jank'
+        run: |
+          curl -s https://ppa.jank-lang.org/KEY.gpg | gpg --dearmor | sudo tee /etc/apt/trusted.gpg.d/jank.gpg > /dev/null
+          echo "deb [signed-by=/etc/apt/trusted.gpg.d/jank.gpg] https://ppa.jank-lang.org $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/jank.list > /dev/null
+          sudo apt-get update
+          sudo apt-get install -y jank
+
+      - if: matrix.profile == 'dialtone'
+        uses: erlef/setup-beam@v1.24.1
+        with:
+          otp-version: '28'
+          rebar3-version: '3.25'
+      - if: matrix.profile == 'dialtone'
+        uses: actions/checkout@v7
+        with:
+          repository: nrepl/nrepl-beam
+          path: nrepl-beam
+      - if: matrix.profile == 'dialtone'
+        run: |
+          (cd nrepl-beam/dialtone && rebar3 compile)
+          echo "$PWD/nrepl-beam/dialtone/bin" >> "$GITHUB_PATH"
+
+      - name: Run proof
+        run: |
+          set +e
+          bin/proof run -v -json "report-${{ matrix.profile }}.json" "profiles/${{ matrix.profile }}.toml"
+          code=$?
+          # 1 means the server failed some checks, which is what we're here
+          # to find out. Anything else means proof couldn't do its job.
+          [ "$code" -le 1 ]
+      - if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: report-${{ matrix.profile }}
+          path: report-${{ matrix.profile }}.json
+
+  matrix:
+    needs: run
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+      - run: go build -o bin/proof ./cmd/proof
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: report-*
+          merge-multiple: true
+          path: reports
+      - name: Build the matrix
+        run: |
+          # The reference implementation goes first.
+          reports=()
+          for p in clojure babashka clojure-clr basilisp jank dialtone; do
+            [ -f "reports/report-$p.json" ] && reports+=("reports/report-$p.json")
+          done
+          bin/proof matrix "${reports[@]}" > matrix.md
+          cat matrix.md >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: matrix
+          path: matrix.md
