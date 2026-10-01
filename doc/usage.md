@@ -31,13 +31,14 @@ $ go build -o bin/proof ./cmd/proof
 
 ## Checking Your Server
 
-proof needs a profile for your server. That's a small TOML file that explains
-how to start the server and provides a few snippets of code in its
-language. The [profiles](../profiles) folder has profiles for nREPL
-itself, Babashka, Basilisp, ClojureCLR, jank and dialtone (Erlang), and
-it's a good idea to start from the one that's closest to your server. If
-you're working on a Clojure dialect you can probably use `clojure.toml`
-almost as is, otherwise `dialtone.toml` is a better starting point.
+proof needs a profile for your server. That's a small TOML file that
+explains how to start the server and provides a few snippets of code in
+its language. The [profiles](../profiles) folder has profiles for nREPL
+itself, Babashka, Basilisp, ClojureCLR, jank, dialtone (Erlang) and
+repartee (Elixir), and it's a good idea to start from the one that's
+closest to your server. If you're working on a Clojure dialect you can
+probably use `clojure.toml` almost as is, otherwise `dialtone.toml` is a
+better starting point.
 
 Here's a minimal profile:
 

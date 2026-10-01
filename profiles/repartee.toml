@@ -1,0 +1,35 @@
+# repartee, the Elixir nREPL server from nrepl/nrepl-beam. Expects the
+# repartee launcher (repartee/bin/repartee) on PATH.
+name = "repartee (Elixir)"
+homepage = "https://github.com/nrepl/nrepl-beam"
+
+[launch]
+command = ["repartee", "--no-port-file"]
+port-pattern = 'nREPL server started on port (\d+)'
+startup-timeout = "120s"
+
+[snippets.value]
+code = "1 + 2"
+value = "3"
+
+[snippets.stdout]
+code = 'IO.write("proof")'
+out = "proof"
+
+[snippets.stderr]
+code = 'IO.write(:stderr, "proof")'
+err = "proof"
+
+[snippets.throw]
+code = 'raise "proof"'
+
+[snippets.define]
+code = "proof_answer = 42"
+use = "proof_answer"
+value = "42"
+
+# Variable bindings are per session.
+[snippets.session-state]
+code = "proof_marker = :proof_marker"
+use = "proof_marker"
+value = ":proof_marker"

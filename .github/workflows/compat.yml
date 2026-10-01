@@ -17,7 +17,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        profile: [clojure, babashka, clojure-clr, basilisp, jank, dialtone]
+        profile: [clojure, babashka, clojure-clr, basilisp, jank, dialtone, repartee]
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-go@v7
@@ -65,12 +65,13 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y jank
 
-      - if: matrix.profile == 'dialtone'
+      - if: matrix.profile == 'dialtone' || matrix.profile == 'repartee'
         uses: erlef/setup-beam@v1.24.1
         with:
           otp-version: '28'
           rebar3-version: '3.25'
-      - if: matrix.profile == 'dialtone'
+          elixir-version: ${{ matrix.profile == 'repartee' && '1.19' || '' }}
+      - if: matrix.profile == 'dialtone' || matrix.profile == 'repartee'
         uses: actions/checkout@v7
         with:
           repository: nrepl/nrepl-beam
@@ -79,6 +80,10 @@ jobs:
         run: |
           (cd nrepl-beam/dialtone && rebar3 compile)
           echo "$PWD/nrepl-beam/dialtone/bin" >> "$GITHUB_PATH"
+      - if: matrix.profile == 'repartee'
+        run: |
+          (cd nrepl-beam/repartee && mix deps.get && mix compile)
+          echo "$PWD/nrepl-beam/repartee/bin" >> "$GITHUB_PATH"
 
       - name: Run proof
         run: |
@@ -113,7 +118,7 @@ jobs:
         run: |
           # The reference implementation goes first.
           reports=()
-          for p in clojure babashka clojure-clr basilisp jank dialtone; do
+          for p in clojure babashka clojure-clr basilisp jank dialtone repartee; do
             [ -f "reports/report-$p.json" ] && reports+=("reports/report-$p.json")
           done
           bin/proof matrix "${reports[@]}" > matrix.md
