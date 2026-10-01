@@ -19,12 +19,29 @@ gets documented here.
 
 ### The Format of `ops` in `describe`
 
-The spec prefers a list of ops and says the map format is "no longer
-recommended". CIDER (`nrepl-op-supported-p` in `nrepl-client.el`) and
-Calva (`describe.ops[op]`) both look up ops in a map, so a list breaks
-both of them. (dialtone returns a map for this very reason.) For now
-proof needs a map. The plan is to make CIDER and Calva accept both
-formats and then relax the check to allow lists.
+The spec says the response "must have a list of `ops`" and calls the map
+format "no longer recommended". CIDER (`nrepl-op-supported-p` in
+`nrepl-client.el`) and Calva (`describe.ops[op]`) both look up ops in a
+map, so a list breaks both of them. (dialtone returns a map for this very
+reason.) For now proof needs a map. The plan is to make CIDER and Calva
+accept both formats and then relax the check to allow lists.
+
+### The Contents of `versions`
+
+The spec says `versions` is there "for debugging purposes" and its
+example has a plain string for `nrepl`. Clients, however, identify the
+runtime by the keys in `versions`, and jank used to return an empty one
+([jank#782](https://github.com/jank-lang/jank/issues/782)). The entries
+aren't uniform either - CIDER reads `version-string` from `nrepl`,
+`clojure` and `java`, expects `babashka` to be a plain string and builds
+the let-go version from `major` and `minor`.
+
+### Mixing `value`, `out` and `err`
+
+The spec allows `out` and `err` in the same message as `value`, and some
+of its examples do that. CIDER's response handler treats them as mutually
+exclusive and silently drops all but one of them when they arrive in the
+same message, so they should arrive in separate messages.
 
 ### The Format of `load-file` Requests
 
@@ -39,12 +56,28 @@ The spec's example reuses the `id` of the eval request for the interrupt
 request, doesn't specify an `interrupt-id` and puts `interrupted` in the
 response to the interrupt request. The reference implementation and
 dialtone respond to the interrupt request with a plain `done` (or with
-`session-idle` or `interrupt-id-mismatch`) and add `interrupted` and
-`done` to the response of the interrupted eval request.
+`session-idle`, `interrupt-id-mismatch` or `session-ephemeral`, the
+latter two along with `error` in nREPL's case) and add `interrupted` and
+`done` to the response of the interrupted eval request. The spec's
+fallback when there's no `interrupt-id` ("the most recent request of the
+current session") also assumes sessions.
+
+### Reused Request IDs in the Examples
+
+The `stdin` and `interrupt` examples reuse the `id` of the eval request,
+which contradicts the spec's own rule that request IDs should be unique.
 
 ### The Arglists in `lookup`
 
-The spec says `arglist`, but the implementations use `arglists-str`.
+The spec says `arglist`, but the implementations use `arglists-str`
+(nREPL sends a stringified `arglists` as well).
+
+### Required `stdin`
+
+The spec requires `stdin`, but Babashka, Basilisp, jank and ClojureCLR
+don't support it, and clients work fine without it, as long as nothing
+tries to read input. For now proof skips the `stdin` checks for servers
+that don't advertise the op.
 
 ### Optional Sessions
 
@@ -58,10 +91,13 @@ See the decisions above.
   disagree on almost all of them (see [Status Values](#status-values)
   below).
 - The `ns` field in responses, and the fact that the `ns` of a request
-  doesn't change the current namespace of the session
+  doesn't change the current namespace of the session. People still disagree about what
+  the `ns` in responses means, though
   ([nrepl#171](https://github.com/nrepl/nrepl/issues/171)).
-- Requests without a `session` (ephemeral sessions). Calva starts its
-  connection with such a request, so in practice they're required as well.
+- What requests without a `session` mean. None of the spec's eval examples
+  has a `session`, but it never says how such requests behave (nREPL
+  gives each of them a temporary session). Calva starts its connection with such a
+  request, so in practice they're required as well.
 - Code with several forms. There should be one `value` per form, and
   evaluation should stop at the first error
   ([nbb#294](https://github.com/babashka/nbb/issues/294),
@@ -72,39 +108,32 @@ See the decisions above.
   ([nrepl#215](https://github.com/nrepl/nrepl/issues/215) reported two
   `done`s for an eval in an unknown namespace, but this doesn't happen
   with nREPL 1.7.0.)
-- `value`, `out` and `err` should arrive in separate messages. CIDER's
-  response handler treats them as mutually exclusive and silently drops
-  all but one of them when they arrive in the same message.
-- Every response should include the `session` of its request, as Calva
-  ignores responses without it.
+- Every response to a request with a `session` should include that
+  session, as Calva ignores responses without it. (For requests without
+  one, nREPL includes the ID of the temporary session it created.)
 - `value` and `status` in the same message. The spec's own example does
   this, but CIDER didn't handle it properly until cider#3869 (which was
   found thanks to jank).
 - `root-ex`, and what `ex` should contain outside of the JVM.
 - `ls-sessions`.
-- Sessions should outlive connections
-  ([nrepl#183](https://github.com/nrepl/nrepl/issues/183)).
+- Sessions should outlive connections, and `need-input` should go to the
+  connection that sent the eval, even when the session was created on
+  another connection ([nrepl#183](https://github.com/nrepl/nrepl/issues/183)).
 - Handling of malformed input - broken messages, top-level values that
   aren't dictionaries and fields of the wrong type. In
   [nrepl#477](https://github.com/nrepl/nrepl/issues/477) such a request
   kills the session thread and later evals never get a `done`.
-- There are no nil or boolean values in bencode, so servers shouldn't try
-  to send them ([nrepl#196](https://github.com/nrepl/nrepl/issues/196),
+- How the JSON in the examples maps to bencode. There are no nil or
+  boolean values in bencode, so servers shouldn't try to send them
+  ([nrepl#196](https://github.com/nrepl/nrepl/issues/196),
   [scittle#123](https://github.com/babashka/scittle/issues/123)).
-- What goes in `versions`. Clients identify the runtime by the keys in
-  it, and jank used to return an empty one
-  ([jank#782](https://github.com/jank-lang/jank/issues/782)). The entries
-  aren't uniform either - CIDER reads `version-string` from `nrepl`,
-  `clojure` and `java`, expects `babashka` to be a plain string and
-  builds the let-go version from `major` and `minor`.
 - Session isolation. Sessions must not share state like `*1`, and that's
   the very reason CIDER uses a separate session for its tooling.
 - The startup message and the `.nrepl-port` file. Right now they're
   described only in the "Building Servers" section of the nREPL manual,
   and CIDER parses the startup message.
 - Conformance levels ([spec#2](https://github.com/nrepl/spec.nrepl.org/issues/2))
-  and MUST/SHOULD wording. The examples in the spec are also in JSON,
-  while the wire format is bencode, which deserves a mention.
+  and MUST/SHOULD wording.
 
 ## Status Values
 
@@ -124,23 +153,25 @@ needs it next to a more specific status, and none of them breaks when
 it's missing.
 
 We propose that the specific status and `done` should be required, while
-`error` should be allowed, but only in the final message of a response
-(REPLy and rebel-readline treat it as the end of a response).
+`error` should be allowed, but only in the final message of a response.
+REPLy and rebel-readline treat both `error` and `eval-error` as the end
+of a response, so nothing but `done` should follow either of them.
 
 ### Failed Evaluations
 
 Most servers respond to failed evaluations with `eval-error`, but nbb,
 let-go and shadow-cljs (for ClojureScript) send only `ex` or `err`
 without any status. CIDER, Calva, REPLy and rebel-readline all rely on
-`eval-error`, so it should be required.
+`eval-error`, so it should be required. The spec's own example of a
+failed evaluation doesn't include it either.
 
 ### `close`
 
 nREPL, Babashka, nbb, ClojureCLR and let-go respond with
 `session-closed`, while dialtone, Basilisp and jank respond with just
-`done`. vim-fireplace forgets a session only when it sees
-`session-closed`, and nREPL's own documentation tells clients to check for
-it, so it should be required.
+`done` (so does the spec's example). vim-fireplace forgets a session only
+when it sees `session-closed`, and nREPL's own documentation tells
+clients to check for it, so it should be required.
 
 ### Closing an Unknown Session
 
@@ -152,8 +183,7 @@ cares about this, so we just need to pick one of them.
 
 nREPL and dialtone respond with `unknown-session`, while the other
 servers don't check the session at all. Conjure relies on
-`unknown-session` to recover from stale sessions. No server or client
-uses `session-not-found`.
+`unknown-session` to recover from stale sessions.
 
 ### Internal Errors
 
@@ -166,9 +196,13 @@ failing handler should still send `done`.
 
 ### When `lookup` Finds Nothing
 
-The spec says that `info` should be omitted. cider-nrepl and let-go add
-`no-info`, while jank sends a plain `error` and `done`. CIDER, Calva,
-Conjure and vim-iced look for `no-info`, so the spec should adopt it.
+The spec says that `info` should be omitted, while jank sends a plain
+`error` and `done`. cider-nrepl's `info` op answers with `no-info`, which
+CIDER and Calva check for, but for `lookup` CIDER just reads `info` (and
+checks `lookup-error`), so omitting `info` works for it. Conjure's
+`lookup` fallback is the one that really needs `no-info` - without it
+`(or msg.info msg)` returns the whole message. The spec should adopt
+`no-info`.
 
 ### `status` is a Set, but Some Clients Compare Lists
 
