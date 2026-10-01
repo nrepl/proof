@@ -3,8 +3,8 @@
 If you discover issues, have ideas for improvements or want to add a new
 check or server, please report them to the
 [issue tracker](https://github.com/nrepl/proof/issues) or submit a pull
-request. proof is only as good as the knowledge captured in its checks,
-and a lot of that knowledge is in the heads of the people who build nREPL
+request. proof is only as good as the knowledge captured in its checks.
+A lot of that knowledge is in the heads of the people who build nREPL
 servers and clients, so every contribution helps!
 
 ## Issues
@@ -21,15 +21,15 @@ Please include:
   install`, `go version -m $(which proof)` will show it)
 - your profile
 - the output of `proof run -v -only '<check id>' <profile>`
-- why you think the behaviour is fine (ideally with a link to the client
+- why you think the behavior is fine (ideally with a link to the client
   code that handles it)
 
 ### Something proof Doesn't Check
 
 If you know of something that clients depend on and that proof doesn't
-check yet, let us know. A link to the client code that depends on it (or
-to the bug it caused) and a short explanation of what a server can get
-wrong is pretty much everything that's needed to write a new check.
+check yet, let us know. All we need for a new check is a link to the
+client code that depends on it (or to the bug it caused) and a short
+explanation of what a server can get wrong.
 
 ### A Gap in the Spec
 
@@ -57,10 +57,10 @@ how to add a check. When submitting a pull request:
 
 - Keep it focused on a single topic and split the work into focused
   commits with good commit messages.
-- Make sure every new check is backed by evidence - a link to client code
-  that depends on the behaviour (for failures) or to nREPL or the spec
-  (for warnings). See the
-  [grading rule](doc/design.md#how-checks-are-graded) for details.
+- Make sure every new check is backed by a link to the client code that
+  depends on the behavior (for failures) or to nREPL or the spec (for
+  warnings). See the [grading rule](doc/design.md#how-checks-are-graded)
+  for details.
 - Add a quirk to the fake server for every new check, and an entry for
   it in `internal/checks/checks_test.go`.
 - Make sure new and updated checks pass against nREPL itself

@@ -11,13 +11,13 @@ check out [Hacking](hacking.md) as well.
 Building a basic nREPL server is not hard, but making it play nice with
 CIDER, Calva and the other clients out there is a different matter. The
 relevant details are spread over the reference implementation, the draft
-spec, many years of client code and lots of GitHub issues, and server
-authors usually discover them one bug report at a time.
+spec, many years of client code and lots of GitHub issues. Server authors
+usually discover them one bug report at a time.
 
 proof aims to capture this knowledge in checks that server authors can
 run in a few seconds and that tell them clearly what's broken and for
 whom. When you run the same checks against many servers you also get a
-compatibility matrix, which shows where the various implementations
+compatibility matrix, which shows where the different implementations
 agree, where they don't and where the spec needs some work.
 
 ## Compatibility, Not Conformance
@@ -27,18 +27,18 @@ doesn't define most status values, it says nothing about requests that
 don't specify a `session` and in a few places it disagrees with all the
 clients in use today. For instance, the spec recommends returning the
 ops in `describe` as a list, but both CIDER and Calva expect them to be a
-map, so a server that follows the spec here would break both clients.
+map. A server that follows the spec here would break both clients.
 
 That's why proof checks compatibility with the existing clients and
 treats the spec as one of several inputs. When the spec and the clients
-disagree the clients win and the discrepancy is recorded in
+disagree the clients win and the difference is recorded in
 [Spec Changes](spec-changes.md), so that the spec can be updated down the
 road. If the clients change (e.g. CIDER starts accepting a list of ops),
 the relevant checks will be relaxed as well.
 
 This is also the reason why proof is called a compatibility suite and not
-a conformance suite - you can only conform to an authoritative spec, and
-nREPL doesn't have one yet.
+a conformance suite. You can only conform to an official spec, and nREPL
+doesn't have one yet.
 
 ## How Checks Are Graded
 
@@ -47,8 +47,8 @@ way:
 
 | Verdict | When |
 |---|---|
-| fail | Some client won't work properly (or users will lose data) if a server gets this wrong. The check names the affected clients and links to the client code that depends on the behaviour. |
-| warn | The server behaves differently from the reference implementation or the spec, but no client we know of depends on this behaviour. |
+| fail | Some client won't work properly (or users will lose data) if a server gets this wrong. The check names the affected clients and links to the client code that depends on the behavior. |
+| warn | The server behaves differently from the reference implementation or the spec, but no client we know of depends on this behavior. |
 | note | The detail in question is up to the implementation (e.g. the format of `ex`). Notes never affect the verdict. |
 
 The idea is that a failure should always be worth fixing and never be a
@@ -103,29 +103,29 @@ gets one failure for the actual problem instead of a dozen copies of it.
 
 The wire checks (`wire.*`) don't send any requests. Instead they look at
 all the messages the server sent during the run, no matter which check
-triggered them, and catch problems that can occur in any response - e.g.
+triggered them, and catch problems that can occur in any response (e.g.
 a missing `session`, a second `done` or `value` and `out` in the same
-message. If the same problem shows up many times, it's reported only once
-along with a count, so a server that makes the same mistake in every
-message won't flood the report.
+message). If the same problem shows up many times, it's reported only
+once along with a count, so a server that makes the same mistake in every
+message doesn't produce a huge report.
 
 This split keeps the regular checks simple. A check doesn't have to
 verify that every response has the right `id`, for instance, as the wire
 checks take care of that for all of them.
 
-## Strict About the Wire, Lenient About the Rest
+## Strict About the Wire, Relaxed About the Rest
 
-proof has its own bencode implementation, as the popular Go libraries are
-quite lenient. They accept unsorted dictionary keys, numbers with leading
-zeros and trailing garbage, which are exactly the problems proof is
-supposed to report. Its decoder distinguishes between hard errors (a
+proof has its own bencode implementation, as the popular Go libraries
+accept a lot of things they shouldn't (e.g. dictionary keys that aren't
+sorted, numbers with leading zeros and trailing garbage). Those are
+exactly the problems proof is supposed to report. Its decoder distinguishes between hard errors (a
 client won't be able to decode the message at all, which fails
 `wire.bencode`) and smaller issues (the message can be decoded, but it's
 not valid bencode, which results in a warning from `wire.canonical`).
 
 Apart from that proof tries not to be pickier than the clients. Output is
 compared after joining all its chunks, as servers are free to split it
-however they want. Checks look for the messages they need instead of
+any way they like. Checks look for the messages they need instead of
 expecting an exact sequence of messages, as servers can interleave output
 and status messages in many legitimate ways. (HTTP/2's h2spec, for
 instance, has open bug reports about false failures caused by unrelated
@@ -137,9 +137,9 @@ To be useful in the CI of a server, proof has to be able to pass while
 some known problems are still unresolved. That's why profiles can list
 expected failures (along with their reasons), which don't fail the run.
 
-The problem with such lists is that they tend to get out of date - a
-problem gets fixed, nobody removes it from the list and a later
-regression goes unnoticed. That's why an expected failure that starts
+The problem with such lists is that they tend to get out of date.
+Something gets fixed, nobody removes it from the list and then nobody
+would notice if it broke again. That's why an expected failure that starts
 passing fails the run as well, so the list can only get shorter. The
 idea comes from the
 [MCP conformance suite](https://github.com/modelcontextprotocol/conformance),
@@ -201,8 +201,8 @@ protocols:
 - [toml-test](https://github.com/toml-lang/toml-test) for shipping a
   language-agnostic test suite as a single Go binary
 - [h2spec](https://github.com/summerwind/h2spec) and
-  [Autobahn](https://github.com/crossbario/autobahn-testsuite) for tying
-  verdicts to the spec and for grading strictness separately from
+  [Autobahn](https://github.com/crossbario/autobahn-testsuite) for
+  connecting the verdicts to the spec and for grading strictness separately from
   correctness
 
 The closest thing the nREPL world had before proof was the integration
@@ -221,8 +221,8 @@ ops, sessions, `eval` and the wire format. Here's what's planned next:
   support them)
 - robustness checks (malformed messages, fields of the wrong type, clients
   disconnecting in the middle of an evaluation)
-- client profiles that replay what specific clients send (e.g. CIDER's
-  connection sequence or Calva's handshake), so a report can tell you
+- client profiles that replay what specific clients send (e.g. when CIDER
+  or Calva connect to a server), so a report can tell you
   directly whether CIDER will work with your server
 - more servers in the compatibility matrix and a proper home for the
   matrix itself

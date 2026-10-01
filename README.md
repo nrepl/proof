@@ -5,15 +5,15 @@
 > the nREPL compatibility suite
 
 proof checks whether an nREPL server will actually work with the clients
-people use - CIDER, Calva, Conjure, vim-fireplace, REPLy and so on. It
+people use (CIDER, Calva, Conjure, vim-fireplace, REPLy and so on). It
 talks to the server over a socket like any client would, runs a set of
 checks against it and tells you what's broken and which clients it breaks.
 
 The [nREPL protocol spec](https://spec.nrepl.org) is still a draft and in
 a few places it disagrees with what clients actually do. When that
-happens proof sides with the clients, as a server that follows the spec
-to the letter, but that CIDER can't connect to, is not much use to
-anyone. All such discrepancies are tracked in
+happens proof sides with the clients. After all, a server that follows
+the spec to the letter, but that CIDER can't connect to, is not much use
+to anyone. All such differences are tracked in
 [doc/spec-changes.md](doc/spec-changes.md), so the spec can catch up
 eventually.
 
@@ -25,9 +25,9 @@ proof is a single binary. You can install it with Go 1.23 or newer:
 $ go install github.com/nrepl/proof/cmd/proof@latest
 ```
 
-Next you'll need a profile for your server - a small TOML file that tells
-proof how to start the server and gives it a few snippets of code in the
-server's language:
+Next you'll need a profile for your server. That's a small TOML file that
+tells proof how to start the server and gives it a few snippets of code in
+the server's language:
 
 ```toml
 name = "My server"
@@ -85,17 +85,17 @@ get a warning instead.
 
 ## Status
 
-proof is still in its early days. Currently it covers the core of the
-protocol - `describe`, unknown ops, `eval`, sessions and the wire format.
-(`proof list` will show you all the checks.)
+proof is still in its early days. Right now it covers the core of the
+protocol (`describe`, unknown ops, `eval`, sessions and the wire format),
+and `proof list` will show you all the checks.
 
 Here's what's coming next:
 
 - checks for `stdin`, `interrupt`, `load-file`, `completions` and `lookup`
 - robustness checks (malformed messages, fields of the wrong type,
   clients disconnecting in the middle of an evaluation)
-- replaying the traffic of real clients (e.g. CIDER's connection sequence
-  or Calva's handshake) as client profiles
+- replaying what real clients send (e.g. when CIDER or Calva connect to a
+  server) as client profiles
 - publishing the compatibility matrix somewhere nicer than a CI job
   summary
 

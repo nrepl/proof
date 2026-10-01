@@ -24,7 +24,7 @@ a few seconds.
 
 To try proof against real servers you'll need some of them installed.
 Babashka is the easiest one to get going with (`bb` is a single binary
-that starts instantly) and nREPL itself is the most important one, as it's
+that starts instantly). nREPL itself is the most important one, as it's
 the reference everything else gets compared to. You'll need the
 [Clojure CLI](https://clojure.org/guides/install_clojure) for it. The
 comment at the top of each profile in the [profiles](../profiles) folder
@@ -54,7 +54,7 @@ $ bin/proof run profiles/clojure.toml
 
 All packages have unit tests, but the most interesting ones are in
 `internal/checks`. `fake_test.go` contains a small nREPL server that can
-be configured to misbehave in various ways (see `quirks`), and
+be configured to misbehave in many different ways (see `quirks`), and
 `checks_test.go` runs all the checks against it:
 
 - When no quirks are enabled, all checks must pass. This verifies that
@@ -113,7 +113,7 @@ Here's what each of its fields means:
 | `Title` | Describes what a server should do. It should be true when the check passes. |
 | `Severity` | Follows the [grading rule](design.md#how-checks-are-graded) - use `check.Fail` only when some client breaks or users lose data, and `check.Warn` otherwise. If you can't name the affected client, it's a warning. |
 | `Why` | A sentence explaining who's affected and how. It appears next to every failure, so write it for a server author who has never heard of the problem. |
-| `Refs` | The evidence for the check. A check that fails needs at least one link to client code that depends on the behaviour in question. The links live in `refs.go` and are pinned to specific commits (see [Links to Client Code](#links-to-client-code)). |
+| `Refs` | The evidence for the check. A check that fails needs at least one link to client code that depends on the behavior in question. The links live in `refs.go` and are pinned to specific commits (see [Links to Client Code](#links-to-client-code)). |
 | `Snippets`, `Needs` | The snippets and capabilities the check uses. Checks are skipped when the profile doesn't provide them. `t.Snippet` panics if a check uses a snippet that it didn't declare, which the tests catch, so the two can't get out of sync. |
 | `Requires` | The checks this check depends on. Everything that creates a session requires `session.clone`, and everything that looks at the response of `describe` requires `describe.reply`. |
 
@@ -141,8 +141,8 @@ Responses are returned as `nrepl.Response`, which has helpers like
 
 After you've written the check, you'll need to teach the fake server to
 misbehave in a way the check should catch. Add a quirk to `quirks` in
-`fake_test.go`, use it where the fake server builds its response (for
-`eval.stderr` that's `dropErr`, which skips sending `err`) and add an
+`fake_test.go` and use it where the fake server builds its response (for
+`eval.stderr` that's `dropErr`, which skips sending `err`). Then add an
 entry for it to the table in `checks_test.go`:
 
 ```go
@@ -157,7 +157,7 @@ If your check needs a new kind of snippet, document it in the snippets
 table in [Profiles](profiles.md#snippets) and add it to all the profiles
 in the `profiles` folder.
 
-Finally, if the spec doesn't say anything about the behaviour you're
+Finally, if the spec doesn't say anything about the behavior you're
 checking (or it says something else), add a note about it to
 [Spec Changes](spec-changes.md).
 
@@ -222,15 +222,15 @@ ciderEvalError = ref("CIDER eval-error handling", ciderBase+"nrepl-client.el#L89
 
 When you need to link to something new, find the relevant code at a
 recent commit, link to it using the full SHA of the commit and point to
-the lines that actually depend on the behaviour in question. If you
+the lines that actually depend on the behavior in question. If you
 update the base of a project to a newer commit, make sure that all the
 links using it still point to the right lines.
 
 ## Coding Conventions
 
 - The code should always be formatted with `gofmt` and pass `go vet`.
-- Comments and messages should be written in plain English for whoever
-  reads them next. Don't use `--` in comments or in the documentation.
+- Comments and messages should be written in plain English for the
+  people who'll read them later. Don't use `--` in comments or in the documentation.
 - Violation messages should say what happened and what was expected,
   including the actual values (e.g. `evaluating "1 2" gave values ["2"],
   want ["1" "2"]`).

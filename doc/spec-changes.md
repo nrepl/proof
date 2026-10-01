@@ -3,7 +3,7 @@
 This is a running list of things the
 [nREPL protocol spec](https://spec.nrepl.org) has to fix or add, which
 we've collected while building proof. When the draft spec and the
-existing clients disagree, proof follows the clients and the discrepancy
+existing clients disagree, proof follows the clients and the difference
 gets documented here.
 
 ## Decisions
@@ -23,7 +23,7 @@ The spec prefers a list of ops and says the map format is "no longer
 recommended". CIDER (`nrepl-op-supported-p` in `nrepl-client.el`) and
 Calva (`describe.ops[op]`) both look up ops in a map, so a list breaks
 both of them. (dialtone returns a map for this very reason.) For now
-proof requires a map. The plan is to make CIDER and Calva accept both
+proof needs a map. The plan is to make CIDER and Calva accept both
 formats and then relax the check to allow lists.
 
 ### The Format of `load-file` Requests
@@ -60,9 +60,9 @@ See the decisions above.
 - The `ns` field in responses, and the fact that the `ns` of a request
   doesn't change the current namespace of the session
   ([nrepl#171](https://github.com/nrepl/nrepl/issues/171)).
-- Requests without a `session` (ephemeral sessions). Calva's handshake
-  starts with such a request, so in practice they're required as well.
-- Code with several forms - there should be one `value` per form, and
+- Requests without a `session` (ephemeral sessions). Calva starts its
+  connection with such a request, so in practice they're required as well.
+- Code with several forms. There should be one `value` per form, and
   evaluation should stop at the first error
   ([nbb#294](https://github.com/babashka/nbb/issues/294),
   [nrepl#147](https://github.com/nrepl/nrepl/issues/147)).
@@ -97,9 +97,9 @@ See the decisions above.
   aren't uniform either - CIDER reads `version-string` from `nrepl`,
   `clojure` and `java`, expects `babashka` to be a plain string and
   builds the let-go version from `major` and `minor`.
-- Session isolation. Sessions must not share state like `*1` - that's the
-  very reason CIDER uses a separate session for its tooling.
-- The startup message and the `.nrepl-port` file. Currently they're
+- Session isolation. Sessions must not share state like `*1`, and that's
+  the very reason CIDER uses a separate session for its tooling.
+- The startup message and the `.nrepl-port` file. Right now they're
   described only in the "Building Servers" section of the nREPL manual,
   and CIDER parses the startup message.
 - Conformance levels ([spec#2](https://github.com/nrepl/spec.nrepl.org/issues/2))
@@ -164,7 +164,7 @@ don't send anything at all, so the client just hangs. The spec is right
 here and the implementations need to catch up. At the very least, a
 failing handler should still send `done`.
 
-### Failed Lookups
+### When `lookup` Finds Nothing
 
 The spec says that `info` should be omitted. cider-nrepl and let-go add
 `no-info`, while jank sends a plain `error` and `done`. CIDER, Calva,

@@ -1,7 +1,7 @@
 # Usage
 
 This section of the documentation covers everything you need to check an
-nREPL server with proof - from installing proof to running it in your
+nREPL server with proof, from installing proof to running it in your
 server's CI. The details of the profile format are covered separately in
 [Profiles](profiles.md).
 
@@ -18,7 +18,7 @@ That puts `proof` in `$(go env GOPATH)/bin`.
 
 > [!NOTE]
 > There are no tagged releases yet, so `@latest` is simply whatever is on
-> `main`. If you need reproducible builds (e.g. in CI), you can install a
+> `main`. If you always need the same build (e.g. in CI), you can install a
 > specific commit with `@<commit-sha>`.
 
 Alternatively you can build proof from source:
@@ -31,7 +31,7 @@ $ go build -o bin/proof ./cmd/proof
 
 ## Checking Your Server
 
-proof needs a profile for your server - a small TOML file that explains
+proof needs a profile for your server. That's a small TOML file that explains
 how to start the server and provides a few snippets of code in its
 language. The [profiles](../profiles) folder has profiles for nREPL
 itself, Babashka, Basilisp, ClojureCLR, jank and dialtone (Erlang), and
@@ -70,7 +70,7 @@ $ proof run -address localhost:7888 my-server.toml
 ```
 
 With the minimal profile above proof can only run the checks that need
-the `value` snippet - all others will be skipped, and the report will
+the `value` snippet. All the others will be skipped and the report will
 tell you which snippet they were missing. You'll need to add the rest of
 the [snippets](profiles.md#snippets) to get the full picture.
 
@@ -94,9 +94,9 @@ Each check gets one of the following verdicts:
 |---|---|
 | `PASS` | Everything is fine. |
 | `FAIL` | Something a client depends on is broken, or users will lose data. The `why` line explains which clients are affected and the `see` lines link to the relevant client code (pinned to a specific commit), the reference implementation or the GitHub issue the check is based on. |
-| `WARN` | Your server behaves differently from the reference nREPL implementation or the spec, but no client we know of depends on this behaviour. It's a good idea to fix it, but it's not urgent. |
-| `SKIP` | The profile doesn't provide something the check needs, or the check depends on another check that failed - there's no point in checking evaluation in a session if `clone` is broken. |
-| `ERROR` | proof couldn't run the check at all, most likely because it couldn't connect to the server. This doesn't say anything about your server, unless the server died - in this case proof will show its output at the end of the report. |
+| `WARN` | Your server behaves differently from the reference nREPL implementation or the spec, but no client we know of depends on this behavior. It's a good idea to fix it, but it's not a big deal. |
+| `SKIP` | The profile doesn't provide something the check needs, or the check depends on another check that failed (there's no point in checking evaluation in a session if `clone` is broken). |
+| `ERROR` | proof couldn't run the check at all, most likely because it couldn't connect to the server. This doesn't say anything about your server, unless the server died. In this case proof will show its output at the end of the report. |
 
 The `wire.*` checks at the end of the report work a bit differently from
 the rest. Instead of sending requests to the server, they look at all the
@@ -134,7 +134,7 @@ Here are the options supported by `proof run`:
 | Option | Description |
 |---|---|
 | `-address host:port` | Connect to a running server instead of starting one. |
-| `-only pattern` | Run only the checks whose ID matches a glob pattern (e.g. `'eval.*'`). The `wire.*` checks always run, but they only see the messages from the selected checks. |
+| `-only pattern` | Run only the checks whose ID matches a pattern (e.g. `'eval.*'`). The `wire.*` checks always run, but they only see the messages from the selected checks. |
 | `-v` | Show notes and the message exchange for all checks that didn't pass. |
 | `-json file` | Write a JSON report as well. |
 
@@ -144,10 +144,10 @@ Here are the options supported by `proof run`:
 |---|---|
 | 0 | All checks passed, or failed only where the profile expected them to. |
 | 1 | Some checks failed (or an expected failure started passing). |
-| 2 | proof couldn't run - e.g. the options or the profile are invalid, or the server didn't start. |
+| 2 | proof couldn't run (e.g. the options or the profile are invalid, or the server didn't start). |
 | 3 | Some checks couldn't run at all. Usually this means that the server died during the run. |
 
-There are a couple of other commands as well - `proof list` shows all
+There are a couple of other commands as well. `proof list` shows all
 the checks along with their severity and `proof version` shows the
 version of proof.
 
@@ -222,7 +222,7 @@ compare it against your `port-pattern`.
 
 proof keeps the stdin of the server open, as servers that come with a
 terminal REPL tend to exit when stdin is closed. If your server still
-exits, try running its command manually from an empty directory - proof
+exits, try running its command manually from an empty directory, as proof
 runs each server in a new temporary directory.
 
 ### Every Check Fails with "couldn't connect"
@@ -235,8 +235,8 @@ might have to set it explicitly.
 ### Values Don't Match
 
 proof compares the values as strings, so the `value` in a snippet has to
-be exactly what your server returns, quotes and all - e.g. in Clojure a
-string comes back as `"\"hello\""`. Run proof with `-v` to see the
+be exactly what your server returns, quotes and all (e.g. in Clojure a
+string comes back as `"\"hello\""`). Run proof with `-v` to see the
 message exchange.
 
 ### Requests Time Out

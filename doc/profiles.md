@@ -5,7 +5,8 @@ its own language. Profiles are written in TOML, and the ones in the
 [profiles](../profiles) folder are good examples. This section covers all
 the options you can use in them.
 
-Here's a complete profile for an imaginary Clojure dialect:
+Imagine a Clojure dialect called Fizz. Here's what a complete profile for it
+would look like:
 
 ```toml
 # Comments are a good place to say what needs to be installed.
@@ -60,7 +61,7 @@ values = ["1", "2"]
 ```
 
 > [!NOTE]
-> proof rejects profiles with unknown options, so a typo like `timout`
+> proof doesn't accept profiles with unknown options, so a typo like `timout`
 > will result in an error instead of being silently ignored.
 
 ## General Options
@@ -137,8 +138,8 @@ A few tips for writing snippets:
   doesn't end with a newline is a common bug.
 - `define` and `session-state` may look similar, but they check different
   things. `define` checks that later evaluations see earlier definitions,
-  so a global definition is fine. `session-state` on the other hand has to
-  be something that belongs to the session, so proof can check that
+  so a global definition is fine. `session-state`, however, has to be
+  something that belongs to the session, so proof can check that
   sessions are isolated from each other and that they survive reconnects.
   In Clojure that's `*1`, while in Erlang (where variable bindings belong
   to the session) you can use a binding:
@@ -165,7 +166,7 @@ You can list checks that your server is known to fail in the
 ```
 
 Expected failures are still shown in the report, but they don't fail the
-run. On the other hand, if a check on the list passes (or produces just a
+run. If a check on the list passes, though (or produces just a
 warning), proof fails the run and asks you to remove the check from the
 list. This way the list can only get shorter over time and you'll know
 right away when something gets fixed.
