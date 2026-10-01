@@ -184,6 +184,33 @@ func (c *Conn) Collect(id string, timeout time.Duration) (Response, error) {
 	}
 }
 
+// WaitFor waits until a received message satisfies pred and returns it.
+// Messages that arrived before the call count too.
+func (c *Conn) WaitFor(pred func(Message) bool, timeout time.Duration) (Message, error) {
+	deadline := time.NewTimer(timeout)
+	defer deadline.Stop()
+	seen := 0
+	for {
+		c.mu.Lock()
+		events, readErr, changed := c.events[seen:], c.readErr, c.changed
+		seen = len(c.events)
+		c.mu.Unlock()
+		for _, ev := range events {
+			if ev.Dir == Received && ev.Msg != nil && pred(ev.Msg) {
+				return ev.Msg, nil
+			}
+		}
+		if readErr != nil {
+			return nil, fmt.Errorf("%w (%v)", ErrClosed, readErr)
+		}
+		select {
+		case <-changed:
+		case <-deadline.C:
+			return nil, ErrTimeout
+		}
+	}
+}
+
 // Settle waits until nothing has arrived for quiet, or until max has
 // passed, so late messages make it into the transcript.
 func (c *Conn) Settle(quiet, max time.Duration) {

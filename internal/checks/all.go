@@ -9,5 +9,6 @@ func All() []*check.Check {
 	all = append(all, opChecks()...)
 	all = append(all, sessionChecks()...)
 	all = append(all, evalChecks()...)
+	all = append(all, stdinChecks()...)
 	return all
 }

@@ -33,3 +33,9 @@ value = "42"
 code = "proof_marker = :proof_marker"
 use = "proof_marker"
 value = ":proof_marker"
+
+# Reads a line from stdin (newline included).
+[snippets.read-line]
+code = 'IO.gets("")'
+value = '"proof\n"'
+eof = ":eof"

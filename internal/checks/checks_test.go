@@ -23,6 +23,7 @@ var fakeProfile = &profile.Profile{
 		"define":        {Code: "define", Use: "use", Value: "42"},
 		"session-state": {Code: "marker", Use: "*1", Value: ":proof-marker"},
 		"multiple":      {Code: "1 2", Values: []string{"1", "2"}},
+		"read-line":     {Code: "read", Value: `"proof"`, Eof: "nil"},
 	},
 }
 
@@ -53,11 +54,13 @@ func TestChecksCatchMisbehaviour(t *testing.T) {
 		q    quirks
 		want map[string]check.Verdict
 	}{
-		{"ops as a list", quirks{opsList: true}, map[string]check.Verdict{"describe.ops-dict": F, "describe.required-ops": S}},
+		{"ops as a list", quirks{opsList: true}, map[string]check.Verdict{"describe.ops-dict": F, "describe.required-ops": S,
+			"stdin.need-input": S, "stdin.roundtrip": S, "stdin.eof": S}},
 		{"clone not advertised", quirks{noClone: true}, map[string]check.Verdict{"describe.required-ops": F}},
 		{"no versions", quirks{noVersions: true}, map[string]check.Verdict{"describe.versions": W}},
 		{"describe kills the connection", quirks{crashOnDescribe: true}, map[string]check.Verdict{
-			"describe.reply": F, "describe.ops-dict": S, "describe.required-ops": S, "describe.versions": S}},
+			"describe.reply": F, "describe.ops-dict": S, "describe.required-ops": S, "describe.versions": S,
+			"stdin.need-input": S, "stdin.roundtrip": S, "stdin.eof": S}},
 		{"no unknown-op", quirks{noUnknownOp: true}, map[string]check.Verdict{"op.unknown": F, "op.unknown-echo": W}},
 		{"no op echo", quirks{noOpEcho: true}, map[string]check.Verdict{"op.unknown-echo": W}},
 		{"status is a string", quirks{statusString: true}, map[string]check.Verdict{
@@ -87,6 +90,15 @@ func TestChecksCatchMisbehaviour(t *testing.T) {
 			"session.ephemeral": F, "session.persistent": F}},
 		{"unsorted keys", quirks{unsortedKeys: true}, map[string]check.Verdict{"wire.canonical": W}},
 		{"invalid UTF-8", quirks{badUTF8: true}, map[string]check.Verdict{"wire.utf8": W, "eval.stdout": F}},
+		{"no stdin op", quirks{noStdinOp: true}, map[string]check.Verdict{
+			"stdin.need-input": S, "stdin.roundtrip": S, "stdin.eof": S}},
+		{"never asks for input", quirks{noNeedInput: true}, map[string]check.Verdict{
+			"stdin.need-input": F, "stdin.roundtrip": S, "stdin.eof": S}},
+		{"need-input with done", quirks{needInputDone: true}, map[string]check.Verdict{
+			"wire.need-input-alone": F, "wire.one-done": W, "wire.after-done": W,
+			"stdin.roundtrip": F, "stdin.eof": W}},
+		{"EOF is an error", quirks{eofError: true}, map[string]check.Verdict{"stdin.eof": W}},
+		{"input never arrives", quirks{dropStdin: true}, map[string]check.Verdict{"stdin.roundtrip": F, "stdin.eof": W}},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {

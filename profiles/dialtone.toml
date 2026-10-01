@@ -37,3 +37,9 @@ value = "proof_marker"
 [snippets.multiple]
 code = "1. 2."
 values = ["1", "2"]
+
+# Reads a line from stdin (newline included).
+[snippets.read-line]
+code = 'io:get_line("").'
+value = '"proof\n"'
+eof = "eof"

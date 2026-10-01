@@ -148,6 +148,36 @@ func (t *T) Request(c *nrepl.Conn, m nrepl.Message) nrepl.Response {
 	return resp
 }
 
+// Send writes a request without waiting for its reply, returning its id.
+// Pair it with Collect, for requests that need other requests sent while
+// they're still running (stdin, interrupt).
+func (t *T) Send(c *nrepl.Conn, m nrepl.Message) string {
+	id, err := c.Send(m)
+	if err != nil {
+		t.hangf("%s request couldn't be sent: %v", m.Str("op"), err)
+	}
+	return id
+}
+
+// Collect waits for the "done" of a request sent with Send.
+func (t *T) Collect(c *nrepl.Conn, id string) nrepl.Response {
+	resp, err := c.Collect(id, t.env.Profile.Timeout)
+	if err != nil {
+		t.hangf("request %s never finished: %v", id, err)
+	}
+	return resp
+}
+
+// Await waits for a message matching pred, failing the check if none
+// arrives in time. what describes the message for the report.
+func (t *T) Await(c *nrepl.Conn, what string, pred func(nrepl.Message) bool) nrepl.Message {
+	m, err := c.WaitFor(pred, t.env.Profile.Timeout)
+	if err != nil {
+		t.hangf("no %s within %s: %v", what, t.env.Profile.Timeout, err)
+	}
+	return m
+}
+
 // Eval evaluates code, with optional extra request fields.
 func (t *T) Eval(c *nrepl.Conn, code string, extra nrepl.Message) nrepl.Response {
 	return t.Request(c, nrepl.Message{"op": "eval", "code": code}.With(extra))
@@ -299,6 +329,9 @@ func runOne(env *Env, c *Check, earlier map[string]Verdict) (Result, []*nrepl.Co
 func missingRequirements(p *profile.Profile, c *Check, earlier map[string]Verdict) string {
 	for _, id := range c.Requires {
 		if v, ran := earlier[id]; ran && v != Pass && v != Warned {
+			if v == Skipped {
+				return fmt.Sprintf("needs %s, which was skipped", id)
+			}
 			return fmt.Sprintf("needs %s, which didn't pass", id)
 		}
 	}

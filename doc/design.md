@@ -212,11 +212,10 @@ to have a single test suite that every server can be checked against.
 
 ## Future Plans
 
-At this point proof covers the core of the protocol - `describe`, unknown
-ops, sessions, `eval` and the wire format. Here's what's planned next:
+At this point proof covers the core of the protocol (`describe`, unknown
+ops, sessions, `eval`, `stdin` and the wire format). Here's what's planned next:
 
-- checks for `stdin` and `interrupt`, which every interactive client
-  relies on
+- checks for `interrupt`, which every interactive client relies on
 - checks for `completions`, `lookup` and `load-file` (for servers that
   support them)
 - robustness checks (malformed messages, fields of the wrong type, clients

@@ -39,3 +39,9 @@ value = ":proof-marker"
 [snippets.multiple]
 code = "1 2"
 values = ["1", "2"]
+
+# Reads a line from stdin.
+[snippets.read-line]
+code = "(read-line)"
+value = '"proof"'
+eof = "nil"

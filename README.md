@@ -86,12 +86,12 @@ get a warning instead.
 ## Status
 
 proof is still in its early days. Right now it covers the core of the
-protocol (`describe`, unknown ops, `eval`, sessions and the wire format),
+protocol (`describe`, unknown ops, `eval`, sessions, `stdin` and the wire format),
 and `proof list` will show you all the checks.
 
 Here's what's coming next:
 
-- checks for `stdin`, `interrupt`, `load-file`, `completions` and `lookup`
+- checks for `interrupt`, `load-file`, `completions` and `lookup`
 - robustness checks (malformed messages, fields of the wrong type,
   clients disconnecting in the middle of an evaluation)
 - replaying what real clients send (e.g. when CIDER or Calva connect to a

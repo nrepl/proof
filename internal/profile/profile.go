@@ -70,6 +70,8 @@ type Snippet struct {
 	Err    string   `toml:"err"`
 	// Use is code that refers to what Code defined.
 	Use string `toml:"use"`
+	// Eof is the value Code returns when stdin is at end of input.
+	Eof string `toml:"eof"`
 }
 
 // Load reads and validates a profile.

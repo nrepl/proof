@@ -45,11 +45,18 @@ type quirks struct {
 	badUTF8          bool // out isn't valid UTF-8
 	crashOnDescribe  bool // describe closes the connection
 	cloneHangs       bool // clone never replies
+	noStdinOp        bool // describe doesn't list stdin
+	noNeedInput      bool // reading stdin returns nil without asking
+	needInputDone    bool // need-input comes with done
+	eofError         bool // an empty stdin fails the read
+	dropStdin        bool // stdin input never reaches the read
 }
 
 type fakeSession struct {
 	last string
 	vars map[string]string
+	// pending is an eval waiting for stdin.
+	pending nrepl.Message
 }
 
 type fakeServer struct {
@@ -163,6 +170,9 @@ func (s *fakeServer) handle(c net.Conn, req nrepl.Message, local map[string]bool
 		if q.noClone {
 			names = []string{"describe", "eval", "close"}
 		}
+		if !q.noStdinOp {
+			names = append(names, "stdin")
+		}
 		var ops any
 		if q.opsList {
 			l := []any{}
@@ -184,7 +194,7 @@ func (s *fakeServer) handle(c net.Conn, req nrepl.Message, local map[string]bool
 		if q.unsortedKeys {
 			// Hand-encoded with "status" before "id".
 			c.Write([]byte("d6:statusl4:donee2:id" + strconv.Itoa(len(req.Str("id"))) + ":" + req.Str("id") +
-				"3:opsd8:describede4:evalde5:clonede5:closedee8:versionsd4:faked14:version-string3:1.0eee"))
+				"3:opsd8:describede4:evalde5:clonede5:closede5:stdindee8:versionsd4:faked14:version-string3:1.0eee"))
 			return true
 		}
 		s.send(c, req, fields)
@@ -210,6 +220,8 @@ func (s *fakeServer) handle(c net.Conn, req nrepl.Message, local map[string]bool
 		s.send(c, req, map[string]any{"status": status})
 	case "eval":
 		s.eval(c, req, local)
+	case "stdin":
+		s.stdin(c, req, local)
 	default:
 		switch {
 		case q.statusString:
@@ -225,6 +237,30 @@ func (s *fakeServer) handle(c net.Conn, req nrepl.Message, local map[string]bool
 		}
 	}
 	return true
+}
+
+// stdin finishes an eval waiting for input, answering like Clojure's
+// read-line: the line without its newline, or nil at end of input.
+func (s *fakeServer) stdin(c net.Conn, req nrepl.Message, local map[string]bool) {
+	q := s.q
+	if sess, ok := s.session(req, local); ok && sess.pending != nil {
+		pending := sess.pending
+		sess.pending = nil
+		input := req.Str("stdin")
+		switch {
+		case q.dropStdin:
+			s.send(c, pending, map[string]any{"value": `""`})
+		case input == "" && q.eofError:
+			s.send(c, pending, map[string]any{"err": "unexpected EOF\n"})
+			s.send(c, pending, map[string]any{"status": []any{"eval-error"}, "ex": "fake.EOF"})
+		case input == "":
+			s.send(c, pending, map[string]any{"value": "nil"})
+		default:
+			s.send(c, pending, map[string]any{"value": strconv.Quote(strings.TrimSuffix(input, "\n"))})
+		}
+		s.send(c, pending, map[string]any{"status": []any{"done"}})
+	}
+	s.send(c, req, map[string]any{"status": []any{"done"}})
 }
 
 func (s *fakeServer) eval(c net.Conn, req nrepl.Message, local map[string]bool) {
@@ -293,6 +329,16 @@ func (s *fakeServer) eval(c net.Conn, req nrepl.Message, local map[string]bool) 
 			value = "#'user/answer"
 		case "use":
 			value = sess.vars["answer"]
+		case "read":
+			if !q.noNeedInput {
+				sess.pending = req
+				status := []any{"need-input"}
+				if q.needInputDone {
+					status = []any{"need-input", "done"}
+				}
+				s.send(c, req, map[string]any{"status": status})
+				return
+			}
 		case "marker":
 			value = ":proof-marker"
 		case "*1":

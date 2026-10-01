@@ -126,6 +126,7 @@ snippet is missing, all the checks that need it are skipped.
 | `define` | `code`, `use`, `value` | define something that `use` reads back as `value` | `session.persistent` |
 | `session-state` | `code`, `use`, `value` | leave some state in the session that `use` reads back as `value` | `session.across-connections`, `session.isolated` |
 | `multiple` | `code`, `values` | consist of several forms that evaluate to `values` (in order) | `eval.multiple-forms` |
+| `read-line` | `code`, `value`, `eof` | read a line from stdin, evaluating to `value` when the line is `proof` and to `eof` at the end of input | `stdin.need-input`, `stdin.roundtrip`, `stdin.eof` |
 
 A few tips for writing snippets:
 
