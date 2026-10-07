@@ -8,6 +8,7 @@ import (
 
 	"github.com/nrepl/proof/bencode"
 	"github.com/nrepl/proof/internal/check"
+	"github.com/nrepl/proof/internal/check/checktest"
 	"github.com/nrepl/proof/internal/proxy"
 	"github.com/nrepl/proof/nrepl"
 )
@@ -150,15 +151,11 @@ func runClient(t *testing.T, q clientQuirks) map[string]check.Result {
 	if len(traffic) != want {
 		t.Fatalf("got %d transcripts, want %d", len(traffic), want)
 	}
-	results := map[string]check.Result{}
-	for _, r := range check.Grade(ClientRules(), traffic) {
-		results[r.ID] = r
-	}
-	return results
+	return checktest.ByID(check.Grade(ClientRules(), traffic))
 }
 
 func TestWellBehavedClientPassesEverything(t *testing.T) {
-	checkVerdicts(t, runClient(t, clientQuirks{}), nil)
+	checktest.Verdicts(t, runClient(t, clientQuirks{}), nil)
 }
 
 // Each mistake must produce exactly the listed verdicts, and every other
@@ -189,7 +186,7 @@ func TestClientRulesCatchMistakes(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
-			checkVerdicts(t, runClient(t, c.q), c.want)
+			checktest.Verdicts(t, runClient(t, c.q), c.want)
 		})
 	}
 }
@@ -241,11 +238,8 @@ func TestLeftoversCountOnlyWhenTheClientLeftFirst(t *testing.T) {
 				ev.Time = time.Unix(int64(i), 0)
 				events[i] = ev
 			}
-			results := map[string]check.Result{}
-			for _, r := range check.Grade(ClientRules(), []check.Traffic{{Label: "connection 1", Events: events}}) {
-				results[r.ID] = r
-			}
-			checkVerdicts(t, results, map[string]check.Verdict{c.rule: c.want})
+			results := checktest.ByID(check.Grade(ClientRules(), []check.Traffic{{Label: "connection 1", Events: events}}))
+			checktest.Verdicts(t, results, map[string]check.Verdict{c.rule: c.want})
 		})
 	}
 }

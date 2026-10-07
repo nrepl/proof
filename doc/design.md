@@ -155,8 +155,36 @@ how they react.
 As a proxy can only see the wire, proof checks what a client sends and
 not what it does with the replies. Whether a client copes with output
 that arrives after `done`, or with output split into many messages, is a
-different problem, which needs a server that misbehaves on purpose (see
-[Future Plans](#future-plans)).
+different problem, which `proof serve` takes care of.
+
+## Testing Clients
+
+`proof serve` is an nREPL server for the test suites of clients. On its
+own it behaves like nREPL, and scenarios make it behave like other
+servers where they differ from nREPL. The scenarios aren't made up.
+Every one of them is something a server in the compatibility matrix does
+(e.g. `last-value` is what Basilisp, jank and dialtone do), or something
+TCP can do to any server's replies (e.g. deliver a message in pieces).
+That keeps the list down to the differences a client will actually run
+into, and the tests make sure it stays that way. proof runs its own
+checks against every scenario, and a scenario has to get the same
+verdicts as the servers it names. All the scenarios of jank together get jank's
+column of the matrix, for instance.
+
+The grading works the other way around here. proof can't see what a
+client shows its users, so the client's own tests have to do that. Most
+scenarios change only the shape of the replies and not what a user
+should see, so a client's tests can check the same things under every
+scenario. [Autobahn|Testsuite](https://github.com/crossbario/autobahn-testsuite)
+does something similar for WebSocket clients. proof still checks the
+requests, though, just like `proof proxy` does.
+
+proof is not a Clojure implementation, so `proof serve` understands only
+a small piece of Clojure. That's enough for the snippets of the nREPL
+profile, the code CIDER sends when it connects and what client tests
+need (output, values, errors, input, something to interrupt), and it
+gives the same replies as nREPL 1.7.0 for the same code. Code in other
+languages wouldn't help, as no client's tests send Erlang to a server.
 
 Some rules are about what a client leaves behind - sessions that were
 never closed and `need-input` that was never answered. They apply only
@@ -208,7 +236,8 @@ cmd/proof            the command-line interface
 internal/report      text and JSON reports, the compatibility matrix
 internal/checks      the checks, the wire checks, the client rules and a fake server for testing them
 internal/proxy       forwarding the traffic between a client and a server
-internal/clients     accepting clients and recording what they say
+internal/serve       a server for client tests, which acts like other servers on request
+internal/clients     accepting clients and recording what they say, for proxy and serve
 internal/check       running and grading checks, expected failures
 internal/server      starting servers
 internal/profile     loading profiles
@@ -249,8 +278,9 @@ to have a single test suite that every server can be checked against.
 ## Future Plans
 
 At this point proof covers the core of the protocol (`describe`, unknown
-ops, sessions, `eval`, `stdin` and the wire format) and the requests of
-clients. Here's what's planned next:
+ops, sessions, `eval`, `stdin` and the wire format), the requests of
+clients and the server differences clients have to deal with. Here's
+what's planned next:
 
 - checks for `interrupt`, which every interactive client relies on
 - checks for `completions`, `lookup` and `load-file` (for servers that
@@ -261,9 +291,6 @@ clients. Here's what's planned next:
   or Calva connect to a server), so a report can tell you
   directly whether CIDER will work with your server (`proof proxy`
   already sees this traffic, it just doesn't save it yet)
-- a server that misbehaves on purpose (late output, output split into
-  many messages, unusual status values), for client test suites to run
-  against
 - more servers in the compatibility matrix and a proper home for the
   matrix itself
 - incorporating [Spec Changes](spec-changes.md) into the spec, so that

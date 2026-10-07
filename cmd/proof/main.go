@@ -1,5 +1,5 @@
 // Command proof checks an nREPL server's compatibility with the clients
-// people actually use, and what a client sends to a server.
+// people actually use, and checks clients against servers.
 package main
 
 import (
@@ -17,6 +17,7 @@ import (
 	"github.com/nrepl/proof/internal/checks"
 	"github.com/nrepl/proof/internal/profile"
 	"github.com/nrepl/proof/internal/report"
+	"github.com/nrepl/proof/internal/serve"
 	"github.com/nrepl/proof/internal/server"
 )
 
@@ -25,17 +26,18 @@ const version = "0.1.0-dev"
 const usage = `proof checks an nREPL server's compatibility with existing clients.
 
 Usage:
-  proof run [flags] PROFILE       run the checks against the server a profile describes
-  proof proxy [flags] [PROFILE]   check what a client sends to a server, by sitting between them
-  proof matrix REPORT...          build a Markdown compatibility matrix from JSON reports
-  proof list                      list every check and rule
+  proof run [flags] PROFILE           run the checks against the server a profile describes
+  proof proxy [flags] [PROFILE]       check what a client sends to a server, by sitting between them
+  proof serve [flags] [SCENARIO...]   be a server for a client's tests, acting like other servers where asked
+  proof matrix REPORT...              build a Markdown compatibility matrix from JSON reports
+  proof list                          list every check, rule and scenario
   proof version
 
 The exit status of run is 0 when everything passed (or failed as the
 profile expects), 1 when the server failed checks, 2 when proof couldn't
 start (bad flags or profile, or the server didn't come up), and 3 when some
-checks couldn't run at all. The same goes for proxy, where 1 means the
-client failed rules and 3 means no client sent anything.
+checks couldn't run at all. The same goes for proxy and serve, where 1
+means the client failed rules and 3 means no client sent anything.
 
 Run flags:
 `
@@ -50,6 +52,8 @@ func main() {
 		os.Exit(run(os.Args[2:]))
 	case "proxy":
 		os.Exit(runProxy(os.Args[2:]))
+	case "serve":
+		os.Exit(runServe(os.Args[2:]))
 	case "matrix":
 		os.Exit(matrix(os.Args[2:]))
 	case "list":
@@ -69,6 +73,8 @@ func printUsage(w io.Writer) {
 	runFlags(w).PrintDefaults()
 	fmt.Fprint(w, "\nProxy flags:\n")
 	proxyFlags(w, &proxyOptions{}).PrintDefaults()
+	fmt.Fprint(w, "\nServe flags:\n")
+	serveFlags(w, &clientOptions{}).PrintDefaults()
 }
 
 type options struct {
@@ -277,5 +283,9 @@ func filter(all []*check.Check, pattern string) ([]*check.Check, error) {
 func list(w io.Writer) {
 	for _, e := range append(catalog(), ruleEntries(checks.ClientRules())...) {
 		fmt.Fprintf(w, "%-28s %-4s %s\n", e.id, e.severity, e.title)
+	}
+	fmt.Fprint(w, "\nScenarios for proof serve:\n")
+	for _, s := range serve.Scenarios() {
+		fmt.Fprintf(w, "%-28s %s (%s)\n", s.Name, s.Title, s.Who)
 	}
 }

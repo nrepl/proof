@@ -50,9 +50,13 @@ func doneServer(t *testing.T) string {
 	return ln.Addr().String()
 }
 
-// proxyRun runs proof proxy with a client that sends the given frames and
-// hangs up, and returns the exit status and output.
-func proxyRun(t *testing.T, frames []string, args ...string) (int, string, string) {
+// command is how the tests run proof proxy and proof serve: until ctx is
+// done, telling listening where clients go.
+type command func(ctx context.Context, args []string, stdout, stderr io.Writer, listening func(addr string)) int
+
+// runWithClient runs a command with a client that sends the given frames
+// and hangs up, and returns the exit status and output.
+func runWithClient(t *testing.T, run command, frames []string, args ...string) (int, string, string) {
 	t.Helper()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -75,9 +79,15 @@ func proxyRun(t *testing.T, frames []string, args ...string) (int, string, strin
 		io.Copy(io.Discard, c)
 	}
 	var stdout, stderr bytes.Buffer
-	args = append([]string{"-address", doneServer(t)}, args...)
-	code := proxyUntil(ctx, args, &stdout, &stderr, client)
+	code := run(ctx, args, &stdout, &stderr, client)
 	return code, stdout.String(), stderr.String()
+}
+
+// proxyRun runs proof proxy in front of a server that answers everything
+// with done.
+func proxyRun(t *testing.T, frames []string, args ...string) (int, string, string) {
+	t.Helper()
+	return runWithClient(t, proxyUntil, frames, append([]string{"-address", doneServer(t)}, args...)...)
 }
 
 func TestProxyExitCodes(t *testing.T) {
@@ -129,10 +139,12 @@ func TestProxyNeedsAServer(t *testing.T) {
 	}
 }
 
-func TestListShowsClientRules(t *testing.T) {
+func TestListShowsEverything(t *testing.T) {
 	var buf bytes.Buffer
 	list(&buf)
-	if !strings.Contains(buf.String(), "client.need-input") || !strings.Contains(buf.String(), "wire.dict") {
-		t.Errorf("list is missing rules:\n%s", buf.String())
+	for _, want := range []string{"eval.value", "wire.dict", "client.need-input", "split-output"} {
+		if !strings.Contains(buf.String(), want) {
+			t.Errorf("list is missing %s:\n%s", want, buf.String())
+		}
 	}
 }
