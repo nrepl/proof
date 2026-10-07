@@ -37,12 +37,34 @@ func runFake(t *testing.T, q quirks) map[string]check.Result {
 	return results
 }
 
-func TestWellBehavedServerPassesEverything(t *testing.T) {
-	for id, r := range runFake(t, quirks{}) {
-		if r.Verdict != check.Pass {
-			t.Errorf("%s: %s %v", id, r.Verdict, r.Details)
+// checkVerdicts makes sure each check or rule in want got the listed
+// verdict, and that everything else passed.
+func checkVerdicts(t *testing.T, results map[string]check.Result, want map[string]check.Verdict) {
+	t.Helper()
+	var ids []string
+	for id := range results {
+		ids = append(ids, id)
+	}
+	sort.Strings(ids)
+	for _, id := range ids {
+		r := results[id]
+		w, listed := want[id]
+		if !listed {
+			w = check.Pass
+		}
+		if r.Verdict != w {
+			t.Errorf("%s: got %s, want %s %v", id, r.Verdict, w, r.Details)
 		}
 	}
+	for id := range want {
+		if _, ok := results[id]; !ok {
+			t.Errorf("%s: no such check or rule", id)
+		}
+	}
+}
+
+func TestWellBehavedServerPassesEverything(t *testing.T) {
+	checkVerdicts(t, runFake(t, quirks{}), nil)
 }
 
 // Each misbehaviour must produce exactly the listed verdicts, and every
@@ -103,27 +125,7 @@ func TestChecksCatchMisbehaviour(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
-			results := runFake(t, c.q)
-			var ids []string
-			for id := range results {
-				ids = append(ids, id)
-			}
-			sort.Strings(ids)
-			for _, id := range ids {
-				r := results[id]
-				want, listed := c.want[id]
-				if !listed {
-					want = check.Pass
-				}
-				if r.Verdict != want {
-					t.Errorf("%s: got %s, want %s %v", id, r.Verdict, want, r.Details)
-				}
-			}
-			for id := range c.want {
-				if _, ok := results[id]; !ok {
-					t.Errorf("%s: no such check", id)
-				}
-			}
+			checkVerdicts(t, runFake(t, c.q), c.want)
 		})
 	}
 }

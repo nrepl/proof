@@ -32,11 +32,32 @@ type Event struct {
 	// Data is the decoded value, whatever its type.
 	Data any
 	Raw  []byte
-	// Violations are non-fatal encoding problems in a received frame.
+	// Violations are non-fatal encoding problems in the frame.
 	Violations []bencode.Violation
-	// Err is set when a received frame couldn't be decoded. It's the last
-	// event on the connection.
+	// Err is set when a frame couldn't be decoded. Nothing that came after
+	// it on the connection was decoded.
 	Err error
+}
+
+// DecodeEvent records what bencode.Decoder.Decode returned: a frame, or
+// a frame that couldn't be decoded. It returns false when the stream ended
+// between frames or broke off (e.g. it was reset), which isn't a problem
+// with the encoding.
+func DecodeEvent(dir Direction, v bencode.Value, err error) (Event, bool) {
+	ev := Event{Dir: dir, Time: time.Now(), Raw: v.Raw}
+	var se *bencode.SyntaxError
+	switch {
+	case err == nil:
+		ev.Data, ev.Violations = v.Data, v.Violations
+		if m, ok := v.Data.(map[string]any); ok {
+			ev.Msg = Message(m)
+		}
+	case errors.As(err, &se) || errors.Is(err, io.ErrUnexpectedEOF):
+		ev.Err = err
+	default:
+		return Event{}, false
+	}
+	return ev, true
 }
 
 // Conn is a connection to an nREPL server.
@@ -77,26 +98,15 @@ func (c *Conn) readLoop() {
 	for {
 		v, err := dec.Decode()
 		c.mu.Lock()
-		if err != nil {
-			// Only a frame that failed to decode goes in the transcript; a
-			// clean close or a reset between frames isn't the server
-			// breaking the encoding.
-			var se *bencode.SyntaxError
-			if errors.As(err, &se) || errors.Is(err, io.ErrUnexpectedEOF) {
-				c.events = append(c.events, Event{Dir: Received, Time: time.Now(), Raw: v.Raw, Err: err})
-			}
-			c.readErr = err
-			c.notifyLocked()
-			c.mu.Unlock()
-			return
+		if ev, ok := DecodeEvent(Received, v, err); ok {
+			c.events = append(c.events, ev)
 		}
-		ev := Event{Dir: Received, Time: time.Now(), Data: v.Data, Raw: v.Raw, Violations: v.Violations}
-		if m, ok := v.Data.(map[string]any); ok {
-			ev.Msg = Message(m)
-		}
-		c.events = append(c.events, ev)
+		c.readErr = err
 		c.notifyLocked()
 		c.mu.Unlock()
+		if err != nil {
+			return
+		}
 	}
 }
 

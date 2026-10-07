@@ -68,7 +68,7 @@ func Text(w io.Writer, run Run, verbose bool) {
 			}
 			for i, tr := range res.Transcripts {
 				fmt.Fprintf(w, "         connection %d:\n", i+1)
-				writeTranscript(w, tr, "           ")
+				Transcript(w, tr, "           ")
 			}
 		}
 	}
@@ -94,7 +94,9 @@ func (r Run) expectedFailures() int {
 	return n
 }
 
-func writeTranscript(w io.Writer, events []nrepl.Event, indent string) {
+// Transcript writes the events of a connection, one per line, with times
+// relative to the first one.
+func Transcript(w io.Writer, events []nrepl.Event, indent string) {
 	if len(events) == 0 {
 		return
 	}
