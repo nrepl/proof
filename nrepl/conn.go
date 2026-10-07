@@ -37,6 +37,9 @@ type Event struct {
 	// Err is set when a frame couldn't be decoded. Nothing that came after
 	// it on the connection was decoded.
 	Err error
+	// Closed means the side Dir refers to closed the connection. Nothing
+	// else is set.
+	Closed bool
 }
 
 // DecodeEvent records what bencode.Decoder.Decode returned: a frame, or

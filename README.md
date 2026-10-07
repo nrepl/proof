@@ -8,6 +8,8 @@ proof checks whether an nREPL server will actually work with the clients
 people use (CIDER, Calva, Conjure, vim-fireplace, REPLy and so on). It
 talks to the server over a socket like any client would, runs a set of
 checks against it and tells you what's broken and which clients it breaks.
+It can also check the other side of the conversation, i.e. the requests
+an nREPL client sends.
 
 The [nREPL protocol spec](https://spec.nrepl.org) is still a draft and in
 a few places it disagrees with what clients actually do. When that
@@ -70,10 +72,27 @@ server (or that users will lose data). If your server simply does
 something differently from the reference nREPL implementation, you'll
 get a warning instead.
 
+## Checking Clients
+
+If you're working on a client, `proof proxy` can sit between it and a
+server and record everything the two of them say to each other:
+
+```shell
+$ proof proxy -listen 127.0.0.1:7888 profiles/babashka.toml
+```
+
+Connect your client to port 7888, use it for a while (or run its test
+suite against it) and press Ctrl-C when you're done. proof will then
+check the requests your client sent - e.g. that every request has an
+`id`, that `need-input` gets answered with `stdin` in the right session
+and that sessions get closed in the end. Here a failure means that some
+server won't work properly with your client, and the report links to the
+server code in question.
+
 ## Documentation
 
 - [Usage](doc/usage.md) - checking your server, reading the report,
-  running proof in CI and comparing servers
+  running proof in CI, comparing servers and checking your client
 - [Profiles](doc/profiles.md) - all the profile options, the snippets and
   known failures
 - [Design](doc/design.md) - the general approach and how checks are graded
@@ -87,7 +106,8 @@ get a warning instead.
 
 proof is still in its early days. Right now it covers the core of the
 protocol (`describe`, unknown ops, `eval`, sessions, `stdin` and the wire format),
-and `proof list` will show you all the checks.
+along with the requests clients send, and `proof list` will show you all
+the checks.
 
 Here's what's coming next:
 
@@ -96,6 +116,9 @@ Here's what's coming next:
   clients disconnecting in the middle of an evaluation)
 - replaying what real clients send (e.g. when CIDER or Calva connect to a
   server) as client profiles
+- a server that misbehaves on purpose (late output, output split into
+  many messages and so on), so client test suites can check how their
+  client deals with replies
 - publishing the compatibility matrix somewhere nicer than a CI job
   summary
 

@@ -1,6 +1,7 @@
 package check
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
@@ -34,6 +35,16 @@ func TestGradeCollapsesRepeatedProblems(t *testing.T) {
 func TestGradePassesCleanTraffic(t *testing.T) {
 	rule := &Rule{ID: "wire.x", Severity: Fail, Inspect: func([]nrepl.Event, Reporter) {}}
 	if res := rule.grade([]Traffic{{Label: "a"}}); res.Verdict != Pass || len(res.Details) != 0 {
+		t.Errorf("got %s %v", res.Verdict, res.Details)
+	}
+}
+
+func TestGradeSeesEveryConnectionAtOnce(t *testing.T) {
+	rule := &Rule{ID: "client.x", Severity: Warn, InspectAll: func(traffic []Traffic, reporter func(Traffic) Reporter) {
+		reporter(traffic[len(traffic)-1])(fmt.Sprintf("%d connections", len(traffic)), "")
+	}}
+	res := rule.grade([]Traffic{{Label: "connection 1"}, {Label: "connection 2"}})
+	if res.Verdict != Warned || len(res.Details) != 1 || res.Details[0] != "2 connections (during connection 2)" {
 		t.Errorf("got %s %v", res.Verdict, res.Details)
 	}
 }

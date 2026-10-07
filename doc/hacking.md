@@ -45,7 +45,8 @@ $ bin/proof run profiles/clojure.toml
 | `internal/profile` | Loading and validating profiles. |
 | `internal/server` | Starting servers and figuring out their ports. |
 | `internal/check` | The checks framework (`Check`, `T`, `Rule`), grading and expected failures. It doesn't know anything about specific ops. |
-| `internal/checks` | The checks (`describe.go`, `op.go`, `session.go` and `eval.go`), the wire checks (`wire.go`), the links to client code (`refs.go`) and the fake server used to test all of them (`fake_test.go`). |
+| `internal/checks` | The checks (`describe.go`, `op.go`, `session.go` and `eval.go`), the wire checks (`wire.go`), the client rules (`client.go`), the links to client and server code (`refs.go`), the fake server used to test all of them (`fake_test.go`) and a scripted client for testing the client rules (`client_test.go`). |
+| `internal/proxy` | Forwarding the traffic between a client and a server and recording it, for `proof proxy`. |
 | `internal/report` | Text and JSON reports and the compatibility matrix. |
 | `profiles` | The profiles for the servers in the compatibility matrix. |
 | `doc/spec-changes.md` | All the gaps and disagreements found in the draft spec. |
@@ -65,6 +66,10 @@ be configured to misbehave in many different ways (see `quirks`), and
 
 In other words - every check needs a quirk that makes it fail. Otherwise
 we have no evidence that the check can fail at all.
+
+The client rules are tested the same way. `client_test.go` has a scripted
+client that talks to the fake server through the proxy and can be told to
+make one mistake at a time (see `clientQuirks`).
 
 Before submitting any changes make sure the code is formatted properly
 and the tests pass with the race detector enabled:
@@ -193,6 +198,26 @@ There are a few helpers for going over the messages of a connection:
 Just like the regular checks, every wire check needs a quirk and an entry
 in the table in `checks_test.go`.
 
+## Adding a Client Rule
+
+The client rules live in `client.go`. They are wire checks for the other
+direction - their `Inspect` function gets the messages of one connection
+recorded by `proof proxy`, where the requests of the client are
+`nrepl.Sent` and the replies of the server are `nrepl.Received`.
+`eachRequest` goes over the requests, and the helpers of the wire checks
+work here as well. Rules about sessions use `InspectAll` instead, which
+gets every connection at once, as a client can close a session (or send
+it input) from a different connection than the one that created it.
+
+For clients the [grading rule](design.md#checking-clients) is turned
+around, so a client rule that fails needs a link to the server code that
+breaks. Before adding one, send the request in question to a few real
+servers and see how they react. A small script that writes the request
+to a socket and prints the replies is all you need for that.
+
+Every client rule needs a quirk in `clientQuirks` and an entry in the
+table in `TestClientRulesCatchMistakes` (both in `client_test.go`).
+
 ## Adding a Server
 
 To add a server to the compatibility matrix:
@@ -211,7 +236,7 @@ To add a server to the compatibility matrix:
 
 ## Links to Client Code
 
-The links to the code of clients and nREPL live in `refs.go`. Each
+The links to the code of clients and servers live in `refs.go`. Each
 project has a base URL that's pinned to a specific commit, and each link
 combines a base with a path and a range of lines:
 

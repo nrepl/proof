@@ -1,5 +1,5 @@
 // Command proof checks an nREPL server's compatibility with the clients
-// people actually use.
+// people actually use, and what a client sends to a server.
 package main
 
 import (
@@ -25,15 +25,17 @@ const version = "0.1.0-dev"
 const usage = `proof checks an nREPL server's compatibility with existing clients.
 
 Usage:
-  proof run [flags] PROFILE   run the checks against the server a profile describes
-  proof matrix REPORT...      build a Markdown compatibility matrix from JSON reports
-  proof list                  list every check and wire rule
+  proof run [flags] PROFILE       run the checks against the server a profile describes
+  proof proxy [flags] [PROFILE]   check what a client sends to a server, by sitting between them
+  proof matrix REPORT...          build a Markdown compatibility matrix from JSON reports
+  proof list                      list every check and rule
   proof version
 
 The exit status of run is 0 when everything passed (or failed as the
 profile expects), 1 when the server failed checks, 2 when proof couldn't
 start (bad flags or profile, or the server didn't come up), and 3 when some
-checks couldn't run at all.
+checks couldn't run at all. The same goes for proxy, where 1 means the
+client failed rules and 3 means no client sent anything.
 
 Run flags:
 `
@@ -46,6 +48,8 @@ func main() {
 	switch os.Args[1] {
 	case "run":
 		os.Exit(run(os.Args[2:]))
+	case "proxy":
+		os.Exit(runProxy(os.Args[2:]))
 	case "matrix":
 		os.Exit(matrix(os.Args[2:]))
 	case "list":
@@ -63,6 +67,8 @@ func main() {
 func printUsage(w io.Writer) {
 	fmt.Fprint(w, usage)
 	runFlags(w).PrintDefaults()
+	fmt.Fprint(w, "\nProxy flags:\n")
+	proxyFlags(w, &proxyOptions{}).PrintDefaults()
 }
 
 type options struct {
@@ -204,7 +210,8 @@ type entry struct {
 	severity  check.Severity
 }
 
-// catalog lists every check and wire rule.
+// catalog lists every check and wire rule, i.e. everything a server
+// profile can expect to fail.
 func catalog() []entry {
 	var all []entry
 	for _, c := range checks.All() {
@@ -268,7 +275,7 @@ func filter(all []*check.Check, pattern string) ([]*check.Check, error) {
 }
 
 func list(w io.Writer) {
-	for _, e := range catalog() {
+	for _, e := range append(catalog(), ruleEntries(checks.ClientRules())...) {
 		fmt.Fprintf(w, "%-28s %-4s %s\n", e.id, e.severity, e.title)
 	}
 }

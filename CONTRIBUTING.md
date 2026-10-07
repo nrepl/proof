@@ -60,9 +60,11 @@ how to add a check. When submitting a pull request:
 - Make sure every new check is backed by a link to the client code that
   depends on the behavior (for failures) or to nREPL or the spec (for
   warnings). See the [grading rule](doc/design.md#how-checks-are-graded)
-  for details.
+  for details. For client rules it's the other way around - failures
+  need a link to the server code that breaks.
 - Add a quirk to the fake server for every new check, and an entry for
-  it in `internal/checks/checks_test.go`.
+  it in `internal/checks/checks_test.go`. Client rules get a quirk in the
+  scripted client in `internal/checks/client_test.go` instead.
 - Make sure new and updated checks pass against nREPL itself
   (`profiles/clojure.toml`).
 - Run `gofmt -l .`, `go vet ./...` and `go test -race ./...` before
