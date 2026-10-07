@@ -30,17 +30,7 @@ func WireRules() []*check.Rule {
 			Severity: check.Fail,
 			Why:      "A client's decoder stops at the first broken frame, and the connection is lost with it.",
 			Refs:     []check.Ref{specProtocol},
-			Inspect: eachReceived(func(ev nrepl.Event, report check.Reporter) {
-				if ev.Err == nil {
-					return
-				}
-				problem := ev.Err.Error()
-				var se *bencode.SyntaxError
-				if errors.As(ev.Err, &se) {
-					problem = se.Msg
-				}
-				report(problem, excerpt(ev.Raw))
-			}),
+			Inspect:  eachReceived(badFrame),
 		},
 		{
 			ID:       "wire.dict",
@@ -48,11 +38,7 @@ func WireRules() []*check.Rule {
 			Severity: check.Fail,
 			Why:      "Clients look up id, status and the rest by key; any other top-level value can't be routed.",
 			Refs:     []check.Ref{specProtocol},
-			Inspect: eachReceived(func(ev nrepl.Event, report check.Reporter) {
-				if ev.Err == nil && ev.Msg == nil {
-					report("a top-level "+typeName(ev.Data)+" instead of a dict", excerpt(ev.Raw))
-				}
-			}),
+			Inspect:  eachReceived(notDict),
 		},
 		{
 			ID:       "wire.canonical",
@@ -60,11 +46,7 @@ func WireRules() []*check.Rule {
 			Severity: check.Warn,
 			Why:      "Clients tolerate unsorted keys and leading zeros today, but it's invalid bencode and a stricter decoder would reject it.",
 			Refs:     []check.Ref{specProtocol},
-			Inspect: eachReceived(func(ev nrepl.Event, report check.Reporter) {
-				for _, v := range ev.Violations {
-					report(v.Msg, "")
-				}
-			}),
+			Inspect:  eachReceived(nonCanonical),
 		},
 		{
 			ID:       "wire.utf8",
@@ -110,13 +92,7 @@ func WireRules() []*check.Rule {
 			Why:      "Clients insert id, session, ns, value, out and err straight into buffers and prompts; other types break them.",
 			Refs:     []check.Ref{specEval, ciderPayloadCond},
 			Inspect: eachMessage(func(m nrepl.Message, report check.Reporter) {
-				for _, k := range stringFields {
-					if m.Has(k) {
-						if _, ok := m[k].(string); !ok {
-							report(k+" is "+typeName(m[k]), m.String())
-						}
-					}
-				}
+				wrongTypes[string](m, stringFields, report)
 			}),
 		},
 		{
@@ -227,22 +203,67 @@ func WireRules() []*check.Rule {
 	}
 }
 
-func eachReceived(f func(nrepl.Event, check.Reporter)) func([]nrepl.Event, check.Reporter) {
+// eachFrame calls f for every frame that went in the given direction.
+func eachFrame(dir nrepl.Direction, f func(nrepl.Event, check.Reporter)) func([]nrepl.Event, check.Reporter) {
 	return func(events []nrepl.Event, report check.Reporter) {
 		for _, ev := range events {
-			if ev.Dir == nrepl.Received {
+			if ev.Dir == dir {
 				f(ev, report)
 			}
 		}
 	}
 }
 
-func eachMessage(f func(nrepl.Message, check.Reporter)) func([]nrepl.Event, check.Reporter) {
-	return eachReceived(func(ev nrepl.Event, report check.Reporter) {
+func eachReceived(f func(nrepl.Event, check.Reporter)) func([]nrepl.Event, check.Reporter) {
+	return eachFrame(nrepl.Received, f)
+}
+
+func badFrame(ev nrepl.Event, report check.Reporter) {
+	if ev.Err == nil {
+		return
+	}
+	problem := ev.Err.Error()
+	var se *bencode.SyntaxError
+	if errors.As(ev.Err, &se) {
+		problem = se.Msg
+	}
+	report(problem, excerpt(ev.Raw))
+}
+
+func notDict(ev nrepl.Event, report check.Reporter) {
+	if ev.Err == nil && ev.Msg == nil {
+		report("a top-level "+typeName(ev.Data)+" instead of a dict", excerpt(ev.Raw))
+	}
+}
+
+func nonCanonical(ev nrepl.Event, report check.Reporter) {
+	for _, v := range ev.Violations {
+		report(v.Msg, "")
+	}
+}
+
+// wrongTypes reports each of fields that m has, but not as a T.
+func wrongTypes[T any](m nrepl.Message, fields []string, report check.Reporter) {
+	for _, k := range fields {
+		if v, ok := m[k]; ok {
+			if _, ok := v.(T); !ok {
+				report(k+" is "+typeName(v), m.String())
+			}
+		}
+	}
+}
+
+// eachMessageIn calls f for every dict that went in the given direction.
+func eachMessageIn(dir nrepl.Direction, f func(nrepl.Message, check.Reporter)) func([]nrepl.Event, check.Reporter) {
+	return eachFrame(dir, func(ev nrepl.Event, report check.Reporter) {
 		if ev.Msg != nil {
 			f(ev.Msg, report)
 		}
 	})
+}
+
+func eachMessage(f func(nrepl.Message, check.Reporter)) func([]nrepl.Event, check.Reporter) {
+	return eachMessageIn(nrepl.Received, f)
 }
 
 // reply is a received message along with what came before it on the
@@ -252,9 +273,19 @@ type reply struct {
 	// Req is the request the reply's id refers to, or nil.
 	Req nrepl.Message
 	// AfterDone and AfterError say whether an earlier message for the same
-	// request carried done, or an error status. Replies without a string
-	// id can't be tied to a request, so both stay false for them.
+	// request carried done, or an error status. Replies without an id
+	// can't be tied to a request, so both stay false for them.
 	AfterDone, AfterError bool
+}
+
+// idKey tells ids of different types apart, since servers echo whatever
+// they got.
+func idKey(m nrepl.Message) (string, bool) {
+	v, ok := m["id"]
+	if !ok {
+		return "", false
+	}
+	return fmt.Sprintf("%T %v", v, v), true
 }
 
 // eachReply walks a connection once, annotating every received message.
@@ -266,13 +297,16 @@ func eachReply(f func(reply, check.Reporter)) func([]nrepl.Event, check.Reporter
 			if ev.Msg == nil {
 				continue
 			}
+			id, hasID := idKey(ev.Msg)
 			if ev.Dir == nrepl.Sent {
-				sent[ev.Msg.Str("id")] = ev.Msg
+				if hasID {
+					sent[id] = ev.Msg
+				}
 				continue
 			}
-			id, hasID := ev.Msg["id"].(string)
-			r := reply{Msg: ev.Msg, Req: sent[id]}
+			r := reply{Msg: ev.Msg}
 			if hasID {
+				r.Req = sent[id]
 				r.AfterDone, r.AfterError = done[id], errored[id]
 			}
 			f(r, report)

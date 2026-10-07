@@ -275,16 +275,13 @@ func Run(env *Env, checks []*Check, rules []*Rule) []Result {
 		for _, conn := range conns[i] {
 			tr := conn.Transcript()
 			transcripts = append(transcripts, tr)
-			traffic = append(traffic, Traffic{Check: c.ID, Events: tr})
+			traffic = append(traffic, Traffic{Label: c.ID, Events: tr})
 		}
 		if v := results[i].Verdict; v != Pass && v != Skipped {
 			results[i].Transcripts = transcripts
 		}
 	}
-	for _, rule := range rules {
-		results = append(results, rule.grade(traffic))
-	}
-	return results
+	return append(results, Grade(rules, traffic)...)
 }
 
 func runOne(env *Env, c *Check, earlier map[string]Verdict) (Result, []*nrepl.Conn) {

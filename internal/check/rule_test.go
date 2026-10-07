@@ -15,8 +15,8 @@ func TestGradeCollapsesRepeatedProblems(t *testing.T) {
 		report("status is a string", "")
 	}}
 	traffic := []Traffic{
-		{Check: "a", Events: make([]nrepl.Event, 2)},
-		{Check: "b", Events: make([]nrepl.Event, 1)},
+		{Label: "a", Events: make([]nrepl.Event, 2)},
+		{Label: "b", Events: make([]nrepl.Event, 1)},
 	}
 	res := rule.grade(traffic)
 	if res.Verdict != Failed {
@@ -33,7 +33,7 @@ func TestGradeCollapsesRepeatedProblems(t *testing.T) {
 
 func TestGradePassesCleanTraffic(t *testing.T) {
 	rule := &Rule{ID: "wire.x", Severity: Fail, Inspect: func([]nrepl.Event, Reporter) {}}
-	if res := rule.grade([]Traffic{{Check: "a"}}); res.Verdict != Pass || len(res.Details) != 0 {
+	if res := rule.grade([]Traffic{{Label: "a"}}); res.Verdict != Pass || len(res.Details) != 0 {
 		t.Errorf("got %s %v", res.Verdict, res.Details)
 	}
 }

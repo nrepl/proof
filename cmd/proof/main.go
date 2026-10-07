@@ -137,9 +137,7 @@ func run(args []string) int {
 	for _, id := range outcome.Stale {
 		fmt.Printf("%s is listed in expected-failures but didn't fail; remove it from the profile\n", id)
 	}
-	if srv != nil && !srv.Alive() {
-		fmt.Printf("\nThe server exited during the run. Its output:\n%s", srv.Output())
-	}
+	showDeath(os.Stdout, srv)
 	if opts.json != "" {
 		if err := writeJSON(opts.json, r); err != nil {
 			fmt.Fprintln(os.Stderr, "proof:", err)
@@ -181,6 +179,14 @@ func startServer(p *profile.Profile) (*server.Server, error) {
 	return srv, err
 }
 
+// showDeath shows the output of a server that exited while proof was
+// using it, as that explains whatever went wrong afterwards.
+func showDeath(w io.Writer, srv *server.Server) {
+	if srv != nil && !srv.Alive() {
+		fmt.Fprintf(w, "\nThe server exited during the run. Its output:\n%s", srv.Output())
+	}
+}
+
 func writeJSON(path string, r report.Run) error {
 	f, err := os.Create(path)
 	if err != nil {
@@ -204,10 +210,15 @@ func catalog() []entry {
 	for _, c := range checks.All() {
 		all = append(all, entry{c.ID, c.Title, c.Severity})
 	}
-	for _, r := range checks.WireRules() {
-		all = append(all, entry{r.ID, r.Title, r.Severity})
+	return append(all, ruleEntries(checks.WireRules())...)
+}
+
+func ruleEntries(rules []*check.Rule) []entry {
+	var entries []entry
+	for _, r := range rules {
+		entries = append(entries, entry{r.ID, r.Title, r.Severity})
 	}
-	return all
+	return entries
 }
 
 func allIDs() []string {
