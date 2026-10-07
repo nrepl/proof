@@ -207,9 +207,10 @@ Here's how the codebase is organized:
 cmd/proof            the command-line interface
 internal/report      text and JSON reports, the compatibility matrix
 internal/checks      the checks, the wire checks, the client rules and a fake server for testing them
+internal/proxy       forwarding the traffic between a client and a server
+internal/clients     accepting clients and recording what they say
 internal/check       running and grading checks, expected failures
 internal/server      starting servers
-internal/proxy       forwarding and recording the traffic between a client and a server
 internal/profile     loading profiles
 nrepl                a client that records all messages
 bencode              a strict bencode implementation

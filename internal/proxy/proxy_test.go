@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/nrepl/proof/internal/check"
+	"github.com/nrepl/proof/internal/clients"
 	"github.com/nrepl/proof/nrepl"
 )
 
@@ -79,14 +80,11 @@ func within(t *testing.T, ch <-chan struct{}, what string) {
 }
 
 // firstConn returns the first connection p accepted.
-func firstConn(t *testing.T, p *Proxy) *conn {
+func firstConn(t *testing.T, p *Proxy) *clients.Conn {
 	t.Helper()
 	deadline := time.Now().Add(5 * time.Second)
 	for {
-		p.mu.Lock()
-		conns := p.conns
-		p.mu.Unlock()
-		if len(conns) > 0 {
+		if conns := p.Conns(); len(conns) > 0 {
 			return conns[0]
 		}
 		if time.Now().After(deadline) {
@@ -246,14 +244,13 @@ func TestBothSocketsAreClosedOnceTheClientIsGone(t *testing.T) {
 	c := firstConn(t, p)
 	// Stop would close the sockets itself, so the connection has to end
 	// on its own.
-	within(t, c.done, "the connection to end")
+	within(t, c.Done(), "the connection to end")
+	// The server's writes fail once proof closes its socket.
 	within(t, writeFailed, "the server's writes to fail")
-	for name, nc := range map[string]net.Conn{"client": c.client, "server": c.server} {
-		if err := nc.SetDeadline(time.Time{}); !errors.Is(err, net.ErrClosed) {
-			t.Errorf("the %s socket is still open", name)
-		}
+	if err := c.Client.SetDeadline(time.Time{}); !errors.Is(err, net.ErrClosed) {
+		t.Error("the client's socket is still open")
 	}
-	if got, want := describe(c.events), "-> {id \"1\", op \"describe\"}\n-> closed"; !strings.HasPrefix(got, want) {
+	if got, want := describe(c.Events()), "-> {id \"1\", op \"describe\"}\n-> closed"; !strings.HasPrefix(got, want) {
 		t.Errorf("transcript:\n%s\nwant it to start with:\n%s", got, want)
 	}
 }
@@ -287,9 +284,9 @@ func TestClientHangingUpWhileItsRequestsAreOnTheirWay(t *testing.T) {
 	nc.Close()
 
 	c := firstConn(t, p)
-	within(t, c.done, "the connection to end")
-	if !slices.ContainsFunc(c.events, func(ev nrepl.Event) bool { return ev.Dir == nrepl.Sent && ev.Closed }) {
-		t.Errorf("no hang-up in the transcript:\n%s", describe(c.events[1:]))
+	within(t, c.Done(), "the connection to end")
+	if !slices.ContainsFunc(c.Events(), func(ev nrepl.Event) bool { return ev.Dir == nrepl.Sent && ev.Closed }) {
+		t.Errorf("no hang-up in the transcript:\n%s", describe(c.Events()[1:]))
 	}
 }
 
@@ -400,20 +397,6 @@ func TestStopDisconnectsClientsStillConnected(t *testing.T) {
 	}
 }
 
-// Connections that never send anything (e.g. a script checking whether the
-// port is open yet) aren't clients, but they keep their number so the
-// report matches the log.
-func TestConnectionsThatSendNothingAreLeftOut(t *testing.T) {
-	p, _ := start(t, upstream(t, func(c net.Conn) { io.Copy(io.Discard, c) }))
-	for _, frame := range []string{"", "d2:op8:describee"} {
-		sendAndHangUp(t, p, frame)
-	}
-	traffic := p.Stop(time.Second)
-	if len(traffic) != 1 || traffic[0].Label != "connection 2" {
-		t.Errorf("got %v, want just connection 2", traffic)
-	}
-}
-
 func TestUnreachableServer(t *testing.T) {
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
@@ -437,50 +420,6 @@ func TestUnreachableServer(t *testing.T) {
 	}
 }
 
-// failOnce is a listener whose first Accept fails, the way it does when
-// proof runs out of file descriptors.
-type failOnce struct {
-	net.Listener
-	failed bool
-}
-
-func (l *failOnce) Accept() (net.Conn, error) {
-	if !l.failed {
-		l.failed = true
-		return nil, errors.New("too many open files")
-	}
-	return l.Listener.Accept()
-}
-
-func TestKeepsAcceptingAfterAnError(t *testing.T) {
-	addr := upstream(t, func(c net.Conn) {
-		c.Read(make([]byte, 64))
-		c.Write([]byte("d2:id1:16:statusl4:doneee"))
-	})
-	ln, err := net.Listen("tcp", "127.0.0.1:0")
-	if err != nil {
-		t.Fatal(err)
-	}
-	p := &Proxy{upstream: addr, ln: &failOnce{Listener: ln}}
-	logged := logTo(p)
-	go p.Serve()
-	t.Cleanup(func() { p.Stop(0) })
-
-	c, err := net.Dial("tcp", p.Addr())
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer c.Close()
-	c.Write([]byte("d2:id1:12:op8:describee"))
-	c.SetReadDeadline(time.Now().Add(2 * time.Second))
-	if _, err := c.Read(make([]byte, 1)); err != nil {
-		t.Errorf("no reply: %v", err)
-	}
-	if !strings.Contains(logged(), "Couldn't accept a client") {
-		t.Errorf("the error wasn't logged:\n%s", logged())
-	}
-}
-
 type failing struct{}
 
 func (failing) Write(p []byte) (int, error) { return 0, errors.New("the other side is gone") }
@@ -491,12 +430,12 @@ func TestFailedWritesAreNotHangUps(t *testing.T) {
 	for _, data := range []string{"d2:op8:describee", "hello"} {
 		client, proxied := net.Pipe()
 		go client.Write([]byte(data))
-		c := &conn{}
+		c := conn{&clients.Conn{}}
 		if end := c.relay(proxied, failing{}, nrepl.Sent); end != dstGone {
 			t.Errorf("%q: ended with %d, want dstGone", data, end)
 		}
-		if strings.Contains(describe(c.events), "closed") {
-			t.Errorf("%q: transcript:\n%s", data, describe(c.events))
+		if strings.Contains(describe(c.Events()), "closed") {
+			t.Errorf("%q: transcript:\n%s", data, describe(c.Events()))
 		}
 		client.Close()
 		proxied.Close()

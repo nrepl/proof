@@ -46,7 +46,8 @@ $ bin/proof run profiles/clojure.toml
 | `internal/server` | Starting servers and figuring out their ports. |
 | `internal/check` | The checks framework (`Check`, `T`, `Rule`), grading and expected failures. It doesn't know anything about specific ops. |
 | `internal/checks` | The checks (`describe.go`, `op.go`, `session.go` and `eval.go`), the wire checks (`wire.go`), the client rules (`client.go`), the links to client and server code (`refs.go`), the fake server used to test all of them (`fake_test.go`) and a scripted client for testing the client rules (`client_test.go`). |
-| `internal/proxy` | Forwarding the traffic between a client and a server and recording it, for `proof proxy`. |
+| `internal/clients` | Accepting clients, recording what they say and stopping, for `proof proxy`. |
+| `internal/proxy` | Forwarding the traffic between a client and a server, for `proof proxy`. |
 | `internal/report` | Text and JSON reports and the compatibility matrix. |
 | `profiles` | The profiles for the servers in the compatibility matrix. |
 | `doc/spec-changes.md` | All the gaps and disagreements found in the draft spec. |
