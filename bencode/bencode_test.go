@@ -100,9 +100,13 @@ func TestDecodeSyntaxErrors(t *testing.T) {
 }
 
 func TestDecodeTruncated(t *testing.T) {
-	for _, in := range []string{"i42", "4:sp", "l4:spam", "d2:id"} {
-		if _, err := decodeOne(t, in); !errors.Is(err, io.ErrUnexpectedEOF) {
+	for _, in := range []string{"i42", "4:sp", "l4:spam", "d2:id", "d4:code10:(+ 1"} {
+		v, err := decodeOne(t, in)
+		if !errors.Is(err, io.ErrUnexpectedEOF) {
 			t.Errorf("%q: got %v, want io.ErrUnexpectedEOF", in, err)
+		}
+		if string(v.Raw) != in {
+			t.Errorf("%q: raw is %q", in, v.Raw)
 		}
 	}
 }
