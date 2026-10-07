@@ -65,7 +65,9 @@ func NewDecoder(r io.Reader) *Decoder {
 
 // Value is one decoded top-level value.
 type Value struct {
-	Data       any
+	Data any
+	// Raw is every byte the decoder consumed, which after an error is the
+	// value up to the point where it went wrong.
 	Raw        []byte
 	Violations []Violation
 }
@@ -266,13 +268,14 @@ func (d *Decoder) str() (string, error) {
 		}
 	}
 	buf := make([]byte, n)
-	if _, err := io.ReadFull(d.r, buf); err != nil {
+	read, err := io.ReadFull(d.r, buf)
+	d.off += int64(read)
+	d.raw = append(d.raw, buf[:read]...)
+	if err != nil {
 		if errors.Is(err, io.EOF) {
 			err = io.ErrUnexpectedEOF
 		}
 		return "", err
 	}
-	d.off += int64(n)
-	d.raw = append(d.raw, buf...)
 	return string(buf), nil
 }
