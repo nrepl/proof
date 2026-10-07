@@ -1,12 +1,12 @@
 package checks
 
 import (
-	"sort"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/nrepl/proof/internal/check"
+	"github.com/nrepl/proof/internal/check/checktest"
 	"github.com/nrepl/proof/internal/profile"
 )
 
@@ -30,41 +30,11 @@ var fakeProfile = &profile.Profile{
 func runFake(t *testing.T, q quirks) map[string]check.Result {
 	t.Helper()
 	env := &check.Env{Profile: fakeProfile, Addr: startFake(t, q), Settle: 20 * time.Millisecond}
-	results := map[string]check.Result{}
-	for _, r := range check.Run(env, All(), WireRules()) {
-		results[r.ID] = r
-	}
-	return results
-}
-
-// checkVerdicts makes sure each check or rule in want got the listed
-// verdict, and that everything else passed.
-func checkVerdicts(t *testing.T, results map[string]check.Result, want map[string]check.Verdict) {
-	t.Helper()
-	var ids []string
-	for id := range results {
-		ids = append(ids, id)
-	}
-	sort.Strings(ids)
-	for _, id := range ids {
-		r := results[id]
-		w, listed := want[id]
-		if !listed {
-			w = check.Pass
-		}
-		if r.Verdict != w {
-			t.Errorf("%s: got %s, want %s %v", id, r.Verdict, w, r.Details)
-		}
-	}
-	for id := range want {
-		if _, ok := results[id]; !ok {
-			t.Errorf("%s: no such check or rule", id)
-		}
-	}
+	return checktest.ByID(check.Run(env, All(), WireRules()))
 }
 
 func TestWellBehavedServerPassesEverything(t *testing.T) {
-	checkVerdicts(t, runFake(t, quirks{}), nil)
+	checktest.Verdicts(t, runFake(t, quirks{}), nil)
 }
 
 // Each misbehaviour must produce exactly the listed verdicts, and every
@@ -125,7 +95,7 @@ func TestChecksCatchMisbehaviour(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
-			checkVerdicts(t, runFake(t, c.q), c.want)
+			checktest.Verdicts(t, runFake(t, c.q), c.want)
 		})
 	}
 }

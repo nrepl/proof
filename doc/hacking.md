@@ -44,10 +44,11 @@ $ bin/proof run profiles/clojure.toml
 | `nrepl` | An nREPL client that records all the messages it sends and receives. |
 | `internal/profile` | Loading and validating profiles. |
 | `internal/server` | Starting servers and figuring out their ports. |
-| `internal/check` | The checks framework (`Check`, `T`, `Rule`), grading and expected failures. It doesn't know anything about specific ops. |
+| `internal/check` | The checks framework (`Check`, `T`, `Rule`), grading and expected failures. It doesn't know anything about specific ops. `checktest` has helpers for testing checks. |
 | `internal/checks` | The checks (`describe.go`, `op.go`, `session.go` and `eval.go`), the wire checks (`wire.go`), the client rules (`client.go`), the links to client and server code (`refs.go`), the fake server used to test all of them (`fake_test.go`) and a scripted client for testing the client rules (`client_test.go`). |
-| `internal/clients` | Accepting clients, recording what they say and stopping, for `proof proxy`. |
+| `internal/clients` | Accepting clients, recording what they say and stopping, for `proof proxy` and `proof serve`. |
 | `internal/proxy` | Forwarding the traffic between a client and a server, for `proof proxy`. |
+| `internal/serve` | The server behind `proof serve`: its piece of Clojure (`lang.go` and `eval.go`), the scenarios (`scenarios.go`), sessions (`session.go`) and the server itself (`serve.go`). |
 | `internal/report` | Text and JSON reports and the compatibility matrix. |
 | `profiles` | The profiles for the servers in the compatibility matrix. |
 | `doc/spec-changes.md` | All the gaps and disagreements found in the draft spec. |
@@ -71,6 +72,11 @@ we have no evidence that the check can fail at all.
 The client rules are tested the same way. `client_test.go` has a scripted
 client that talks to the fake server through the proxy and can be told to
 make one mistake at a time (see `clientQuirks`).
+
+`proof serve` gets checked by proof itself. `matrix_test.go` runs all the
+checks against it with the snippets of `profiles/clojure.toml`, so it has
+to pass everything on its own, and with each scenario it has to get the
+same verdicts as the servers the scenario names.
 
 Before submitting any changes make sure the code is formatted properly
 and the tests pass with the race detector enabled:
@@ -218,6 +224,22 @@ to a socket and prints the replies is all you need for that.
 
 Every client rule needs a quirk in `clientQuirks` and an entry in the
 table in `TestClientRulesCatchMistakes` (both in `client_test.go`).
+
+## Adding a Scenario
+
+The scenarios of `proof serve` live in `internal/serve/scenarios.go`.
+Each one sets a field of `behavior`, which the server checks wherever it
+does something differently (e.g. `noErr` in `runEval`). A scenario has to
+be something a real server does, and `Who` says which ones. To find out
+exactly what a server sends, connect to it and print the replies, the
+same way you would for a client rule.
+
+If the scenario changes the verdict of some check, add it to the table in
+`TestScenariosGetTheVerdictsOfTheirServers` (in `matrix_test.go`) with
+the verdicts its servers get in the matrix, and to the columns of those
+servers further down. Otherwise make sure it does what it says in
+`TestScenarioShapes` (in `serve_test.go`). The tables in `doc/usage.md`
+list all the scenarios as well.
 
 ## Adding a Server
 

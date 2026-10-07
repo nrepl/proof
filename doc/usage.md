@@ -2,7 +2,7 @@
 
 This section of the documentation covers everything you need to check an
 nREPL server with proof, from installing proof to running it in your
-server's CI, and how to check an nREPL client with it. The details of the
+server's CI, and how to check and test an nREPL client with it. The details of the
 profile format are covered separately in [Profiles](profiles.md).
 
 ## Installation
@@ -149,8 +149,8 @@ Here are the options supported by `proof run`:
 | 3 | Some checks couldn't run at all. Usually this means that the server died during the run. |
 
 There are a couple of other commands as well. `proof list` shows all
-the checks along with their severity and `proof version` shows the
-version of proof.
+the checks along with their severity (and the scenarios of
+`proof serve`), and `proof version` shows the version of proof.
 
 ## Running proof in CI
 
@@ -291,6 +291,100 @@ wait $proxy
 client fails some checks. The `kill -0` makes sure the step doesn't wait
 forever if proof can't start the server, and the connections `nc` makes
 don't count, as they don't send anything.
+
+## Testing Your Client Against Other Servers
+
+The proxy checks what your client sends, but not what it does with the
+replies. For that there's `proof serve`, a small nREPL server for your
+client's tests. Out of the box it behaves like nREPL itself, and each
+scenario you give it makes it behave like some other server in one
+particular way:
+
+```shell
+$ proof serve -listen 127.0.0.1:7888 last-value no-err
+Running proof serve (last-value, no-err) on 127.0.0.1:7888. Connect your client and press Ctrl-C when it's done.
+```
+
+With these two scenarios it sends only the value of the last form (like
+Basilisp, jank and dialtone) and drops whatever the code prints to
+stderr (like Basilisp, dialtone and repartee). `proof list` shows all
+the scenarios, and every one of them is something a real server does
+(or something TCP can do to the replies):
+
+| Scenario | What changes | Who does it |
+|---|---|---|
+| `split-output` | Output comes one character per message | nREPL splits long output, Basilisp sends `println`'s newline on its own |
+| `empty-messages` | Replies to `eval` include messages with nothing but `id` and `session` | jank |
+| `last-value` | Only the value of the last form is sent | Basilisp, jank, dialtone |
+| `no-err` | What the code prints to stderr never reaches the client | Basilisp, dialtone, repartee |
+| `error-with-done` | `eval-error` comes in the same message as `done` | jank |
+| `no-op-echo` | Replies to unknown ops don't say which op it was | ClojureCLR, Basilisp, jank, dialtone, repartee |
+| `no-close-op` | `describe` doesn't list `close`, even though `close` works | jank |
+| `no-interrupt` | There's no `interrupt` op | Basilisp, jank |
+| `no-stdin` | There's no `stdin` op, and reading input gets an empty string right away | Basilisp |
+| `string-versions` | `versions.proof` is a plain string rather than a dict | Babashka, for `versions.babashka` |
+| `no-session-closed` | `close` replies with `done` alone | Basilisp, jank, dialtone, repartee |
+| `shared-state` | Sessions on the same connection share `*1`, `*e` and the current namespace | ClojureCLR, Basilisp, jank |
+| `socket-sessions` | A session only exists on the connection that cloned it | ClojureCLR, Basilisp, jank |
+| `any-session` | Requests for sessions that don't exist run in a new session | ClojureCLR, Basilisp, jank |
+| `ns-fallback` | An eval in a namespace that doesn't exist runs in the current one | jank |
+| `ns-error` | An eval in a namespace that doesn't exist fails without `namespace-not-found` | Basilisp |
+| `eof-error` | Reading past the end of input fails instead of returning `nil` | nREPL 1.7.0 |
+| `unsorted-keys` | The keys of reply dicts aren't sorted | jank |
+| `byte-writes` | Replies are written a byte at a time | any server |
+| `batched-writes` | Replies are held back and written together until the eval waits or ends | any server |
+| `hang-up` | The server closes the connection instead of answering an `eval` | any server that crashes |
+
+Most scenarios change only how the replies look on the wire, not what a
+user should end up seeing. Evaluating `(println "hi") (+ 1 2)` should
+show `hi` and `3` with `split-output`, `byte-writes` or
+`empty-messages` just like it does without them. So the easiest way to
+use `proof serve` is to write your tests the way you'd check things by
+hand (e.g. "this eval shows this output and this value") and run them
+once for every scenario.
+
+proof can't evaluate real Clojure, of course. Instead it understands just
+enough of it for tests, and gives the same replies as nREPL 1.7.0 does
+for the same code:
+
+| Code | What it does |
+|---|---|
+| Integers, strings, keywords, `nil`, booleans, vectors, maps and quoted forms | Evaluate to themselves |
+| `(+ 1 2)`, `-`, `*`, `/`, `inc`, `dec` | Arithmetic on integers and ratios, where `(/ 1 0)` throws |
+| `(str ...)`, `(apply f ... coll)`, `(repeat n x)` | e.g. `(apply str (repeat 100000 "x"))` for a really long value |
+| `(print ...)`, `(println ...)`, `(pr ...)`, `(prn ...)`, `(flush)` | Output, which `(binding [*out* *err*] ...)` turns into error output |
+| `(read-line)` | Asks for input with `need-input` |
+| `(throw (ex-info "message" {}))` | An `eval-error`, with the same `err` and `ex` as nREPL |
+| `(Thread/sleep ms)` | Something to `interrupt` |
+| `(future ...)` | Runs once the eval is done, so its output arrives after `done` |
+| `(def x 1)`, `x`, `#'x`, `(resolve 'x)`, `@#'x` | Definitions, which all sessions share |
+| `(ns foo)`, `(in-ns 'foo)`, `*ns*` | Namespaces |
+| `*1`, `*2`, `*3`, `*e` | The last results and the last exception in the session |
+| `do`, `if`, `when`, `let`, `when-let` | The usual |
+| `(require ...)` | Nothing, as there's nothing to load |
+
+Other functions get the error Clojure gives for a symbol it can't
+resolve, and syntax proof doesn't read (e.g. sets or anonymous functions)
+gets a read error. That's enough for CIDER to connect and work, and it's
+all you need for checking output, values, errors, input and interrupts.
+
+When you stop it, `proof serve` checks the requests your client sent,
+just like `proof proxy` does, with the same report, options (except for
+`-address`) and exit codes. A test suite can run it in CI like this:
+
+```shell
+for scenario in "" split-output last-value no-err byte-writes; do
+  proof serve -listen 127.0.0.1:7888 $scenario &
+  serve=$!
+  until nc -z 127.0.0.1 7888; do
+    kill -0 $serve || exit 2
+    sleep 1
+  done
+  # run your tests against port 7888 here
+  kill -INT $serve
+  wait $serve || exit 1
+done
+```
 
 ## Troubleshooting
 

@@ -9,7 +9,8 @@ people use (CIDER, Calva, Conjure, vim-fireplace, REPLy and so on). It
 talks to the server over a socket like any client would, runs a set of
 checks against it and tells you what's broken and which clients it breaks.
 It can also check the other side of the conversation, i.e. the requests
-an nREPL client sends.
+an nREPL client sends, and stand in for other servers in a client's
+tests.
 
 The [nREPL protocol spec](https://spec.nrepl.org) is still a draft and in
 a few places it disagrees with what clients actually do. When that
@@ -89,6 +90,21 @@ and that sessions get closed in the end. Here a failure means that some
 server won't work properly with your client, and the report links to the
 server code in question.
 
+To see how your client deals with the replies of different servers, run
+its tests against `proof serve`. It's a small nREPL server that behaves
+like nREPL itself, unless you ask it to behave like some other server in
+one particular way:
+
+```shell
+$ proof serve -listen 127.0.0.1:7888 last-value no-err
+```
+
+Here it sends only the value of the last form (like Basilisp, jank and
+dialtone) and drops what the code prints to stderr (like Basilisp,
+dialtone and repartee). `proof list` shows all the scenarios, and every
+one of them is something a real server does (or something TCP can do to
+the replies).
+
 ## Documentation
 
 - [Usage](doc/usage.md) - checking your server, reading the report,
@@ -106,8 +122,8 @@ server code in question.
 
 proof is still in its early days. Right now it covers the core of the
 protocol (`describe`, unknown ops, `eval`, sessions, `stdin` and the wire format),
-along with the requests clients send, and `proof list` will show you all
-the checks.
+along with the requests clients send and the server differences clients
+have to deal with, and `proof list` will show you all the checks.
 
 Here's what's coming next:
 
@@ -116,9 +132,6 @@ Here's what's coming next:
   clients disconnecting in the middle of an evaluation)
 - replaying what real clients send (e.g. when CIDER or Calva connect to a
   server) as client profiles
-- a server that misbehaves on purpose (late output, output split into
-  many messages and so on), so client test suites can check how their
-  client deals with replies
 - publishing the compatibility matrix somewhere nicer than a CI job
   summary
 
