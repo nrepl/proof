@@ -25,6 +25,11 @@ type Rule struct {
 	Refs     []Ref
 	// Inspect looks at one connection's events and reports each problem.
 	Inspect func(events []nrepl.Event, report Reporter)
+	// InspectAll is used instead of Inspect by rules that have to see
+	// every connection at once, e.g. because sessions outlive the
+	// connection that created them. It reports each problem with the
+	// Reporter for the connection it was on.
+	InspectAll func(traffic []Traffic, reporter func(Traffic) Reporter)
 }
 
 // Reporter takes a problem and an example of it. Identical problems are
@@ -64,8 +69,12 @@ func (r *Rule) grade(traffic []Traffic) Result {
 			problems = append(problems, p)
 		}
 	}
-	for _, tr := range traffic {
-		r.Inspect(tr.Events, reporter(tr))
+	if r.InspectAll != nil {
+		r.InspectAll(traffic, reporter)
+	} else {
+		for _, tr := range traffic {
+			r.Inspect(tr.Events, reporter(tr))
+		}
 	}
 	for i, p := range problems {
 		if i == maxRuleDetails {

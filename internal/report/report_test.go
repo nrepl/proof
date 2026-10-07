@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/nrepl/proof/internal/check"
+	"github.com/nrepl/proof/nrepl"
 )
 
 func sampleRun(server string, verdicts ...check.Verdict) Run {
@@ -75,5 +76,19 @@ func TestTextMarksExpectedFailures(t *testing.T) {
 	out := buf.String()
 	if !strings.Contains(out, "expected: known bug") || !strings.Contains(out, "1 failed (1 expected)") {
 		t.Errorf("expected failure not shown:\n%s", out)
+	}
+}
+
+func TestTranscriptShowsWhoHungUp(t *testing.T) {
+	start := time.Unix(0, 0)
+	events := []nrepl.Event{
+		{Dir: nrepl.Sent, Time: start, Msg: nrepl.Message{"id": "1", "op": "describe"}},
+		{Dir: nrepl.Sent, Time: start.Add(5 * time.Millisecond), Closed: true},
+	}
+	var buf bytes.Buffer
+	Transcript(&buf, events, "  ")
+	want := "  ->      0ms {id \"1\", op \"describe\"}\n  ->      5ms closed the connection\n"
+	if buf.String() != want {
+		t.Errorf("got:\n%s\nwant:\n%s", buf.String(), want)
 	}
 }

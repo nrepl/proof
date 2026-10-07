@@ -207,7 +207,7 @@ func WireRules() []*check.Rule {
 func eachFrame(dir nrepl.Direction, f func(nrepl.Event, check.Reporter)) func([]nrepl.Event, check.Reporter) {
 	return func(events []nrepl.Event, report check.Reporter) {
 		for _, ev := range events {
-			if ev.Dir == dir {
+			if ev.Dir == dir && !ev.Closed {
 				f(ev, report)
 			}
 		}
@@ -282,10 +282,11 @@ type reply struct {
 // they got.
 func idKey(m nrepl.Message) (string, bool) {
 	v, ok := m["id"]
-	if !ok {
-		return "", false
-	}
-	return fmt.Sprintf("%T %v", v, v), true
+	return valueKey(v), ok
+}
+
+func valueKey(v any) string {
+	return fmt.Sprintf("%T %v", v, v)
 }
 
 // eachReply walks a connection once, annotating every received message.

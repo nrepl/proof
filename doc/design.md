@@ -20,6 +20,9 @@ whom. When you run the same checks against many servers you also get a
 compatibility matrix, which shows where the different implementations
 agree, where they don't and where the spec needs some work.
 
+The same knowledge cuts both ways, so proof can also check what a client
+sends to a server (see [Checking Clients](#checking-clients) below).
+
 ## Compatibility, Not Conformance
 
 The [nREPL protocol spec](https://spec.nrepl.org) is still a draft. It
@@ -131,6 +134,37 @@ and status messages in many legitimate ways. (HTTP/2's h2spec, for
 instance, has open bug reports about false failures caused by unrelated
 frames arriving between the ones it expected.)
 
+## Checking Clients
+
+`proof proxy` sits between a client and a server, passes everything
+along as is and records it on the way. Once it's stopped, it grades
+the requests of the client against the client rules (`client.*`), which
+work just like the wire checks, only in the other direction.
+
+The [grading rule](#how-checks-are-graded) is the same as for servers,
+only turned around. A client rule fails only when some server breaks (or
+users lose data), and it links to the server code in question. For
+instance, `client.field-types` fails when `line` isn't an integer,
+because that kills the session's thread in nREPL
+([nrepl#477](https://github.com/nrepl/nrepl/issues/477)). A warning means
+that the client does something the spec or the reference implementation
+doesn't expect, but that servers tolerate. Before a rule was added, the
+mistake it catches was sent to nREPL, Babashka, Basilisp and jank to see
+how they react.
+
+As a proxy can only see the wire, proof checks what a client sends and
+not what it does with the replies. Whether a client copes with output
+that arrives after `done`, or with output split into many messages, is a
+different problem, which needs a server that misbehaves on purpose (see
+[Future Plans](#future-plans)).
+
+Some rules are about what a client leaves behind - sessions that were
+never closed and `need-input` that was never answered. They apply only
+to connections the client closed itself, before the server did. If proof
+is stopped while a client is still connected, the client might simply
+not have gotten to them yet, and if the server hangs up first, it never
+got the chance.
+
 ## Expected Failures
 
 To be useful in the CI of a server, proof has to be able to pass while
@@ -172,9 +206,10 @@ Here's how the codebase is organized:
 ```
 cmd/proof            the command-line interface
 internal/report      text and JSON reports, the compatibility matrix
-internal/checks      the checks, the wire checks and a fake server for testing them
+internal/checks      the checks, the wire checks, the client rules and a fake server for testing them
 internal/check       running and grading checks, expected failures
 internal/server      starting servers
+internal/proxy       forwarding and recording the traffic between a client and a server
 internal/profile     loading profiles
 nrepl                a client that records all messages
 bencode              a strict bencode implementation
@@ -213,7 +248,8 @@ to have a single test suite that every server can be checked against.
 ## Future Plans
 
 At this point proof covers the core of the protocol (`describe`, unknown
-ops, sessions, `eval`, `stdin` and the wire format). Here's what's planned next:
+ops, sessions, `eval`, `stdin` and the wire format) and the requests of
+clients. Here's what's planned next:
 
 - checks for `interrupt`, which every interactive client relies on
 - checks for `completions`, `lookup` and `load-file` (for servers that
@@ -222,7 +258,11 @@ ops, sessions, `eval`, `stdin` and the wire format). Here's what's planned next:
   disconnecting in the middle of an evaluation)
 - client profiles that replay what specific clients send (e.g. when CIDER
   or Calva connect to a server), so a report can tell you
-  directly whether CIDER will work with your server
+  directly whether CIDER will work with your server (`proof proxy`
+  already sees this traffic, it just doesn't save it yet)
+- a server that misbehaves on purpose (late output, output split into
+  many messages, unusual status values), for client test suites to run
+  against
 - more servers in the compatibility matrix and a proper home for the
   matrix itself
 - incorporating [Spec Changes](spec-changes.md) into the spec, so that

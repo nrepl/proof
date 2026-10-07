@@ -17,6 +17,8 @@ const (
 	specBase      = "https://github.com/nrepl/spec.nrepl.org/blob/67796e34ac34f2f28c3af685fc3ab432fe5eb03f/spec.md"
 	replyBase     = "https://github.com/trptcolin/reply/blob/2b28587004aa3b5cd5d4548eb87f7674eb999b13/src/reply/eval_modes/nrepl.clj"
 	rebelBase     = "https://github.com/bhauman/rebel-readline/blob/d8573a61aad5cbbd83532e2050b6595cfb5b13bb/rebel-readline-nrepl/src/rebel_readline/nrepl/service/nrepl.clj"
+	bbNreplBase   = "https://github.com/babashka/babashka.nrepl/blob/fb44874128d8cc2622f164e6a499ed4f00e5aae9/src/babashka/nrepl/"
+	basilispBase  = "https://github.com/basilisp-lang/basilisp/blob/2f993f9e53b4195316426140384c38728304341e/src/basilisp/contrib/nrepl_server.lpy"
 )
 
 func ref(name, url string) check.Ref { return check.Ref{Name: name, URL: url} }
@@ -62,4 +64,18 @@ var (
 	specStdin          = ref("spec: stdin op", specBase+"#L186-L215")
 	ciderNeedInput     = ref("CIDER need-input handling", ciderBase+"nrepl-client.el#L948-L950")
 	nreplStdinEOF      = ref("nREPL treats an empty stdin as EOF", nreplBase+"middleware/session.clj#L380-L390")
+
+	// Server code, for the client rules.
+	nreplReplyID        = ref("nREPL copies the id into replies only if there is one", nreplBase+"misc.clj#L74")
+	nreplConnLoop       = ref("nREPL closes a connection it can't read a request from", nreplBase+"server.clj#L83-L90")
+	nreplSessions       = ref("nREPL keeps sessions (and their threads) until they're closed", nreplBase+"middleware/session.clj#L20-L26")
+	nreplInterruptNoSes = ref("nREPL can't interrupt without a session", nreplBase+"middleware/session.clj#L271-L277")
+	nreplStdinSession   = ref("nREPL hands stdin to the reader of the request's session", nreplBase+"middleware/session.clj#L380-L388")
+	nreplLineColumn     = ref("nREPL casts line and column to int", nreplBase+"middleware/interruptible_eval.clj#L42-L43")
+	nreplEvalNs         = ref("nREPL turns ns into a symbol", nreplBase+"middleware/interruptible_eval.clj#L196")
+	bbUnknownID         = ref("babashka.nrepl replies with id \"unknown\"", bbNreplBase+"impl/utils.clj#L13")
+	bbSessionLoop       = ref("babashka.nrepl stops reading a connection at a frame it can't handle", bbNreplBase+"impl/server.clj#L336-L345")
+	basilispReplyID     = ref("Basilisp copies the id into replies", basilispBase+"#L51-L56")
+	basilispOp          = ref("Basilisp turns op into a keyword", basilispBase+"#L58-L60")
+	basilispEvalNs      = ref("Basilisp turns ns into a symbol", basilispBase+"#L132")
 )

@@ -222,6 +222,9 @@ func (s *fakeServer) handle(c net.Conn, req nrepl.Message, local map[string]bool
 		s.eval(c, req, local)
 	case "stdin":
 		s.stdin(c, req, local)
+	case "interrupt":
+		// Nothing runs long enough to be interrupted.
+		s.send(c, req, map[string]any{"status": []any{"session-idle", "done"}})
 	default:
 		switch {
 		case q.statusString:

@@ -2,8 +2,8 @@
 
 This section of the documentation covers everything you need to check an
 nREPL server with proof, from installing proof to running it in your
-server's CI. The details of the profile format are covered separately in
-[Profiles](profiles.md).
+server's CI, and how to check an nREPL client with it. The details of the
+profile format are covered separately in [Profiles](profiles.md).
 
 ## Installation
 
@@ -202,6 +202,95 @@ you'll probably want to put the reference implementation first.
 > repository on a daily basis. You can find it in the summary of the
 > Compatibility workflow on the
 > [Actions tab](https://github.com/nrepl/proof/actions).
+
+## Checking Your Client
+
+If you're working on an nREPL client, proof can check the requests it
+sends. `proof proxy` starts a server (or uses one that's already
+running) and forwards everything between your client and the server,
+recording every message on the way:
+
+```shell
+$ proof proxy -listen 127.0.0.1:7888 profiles/clojure.toml
+Starting Clojure (nrepl/nrepl 1.7.0)...
+Forwarding 127.0.0.1:7888 to localhost:53613. Connect your client to 127.0.0.1:7888 and press Ctrl-C when it's done.
+```
+
+Connect your client to this port and use it as you normally would -
+evaluate some code, read some input, interrupt something. When you're
+done, disconnect the client and press Ctrl-C. proof will then check
+everything the client sent:
+
+```
+client
+  PASS   client.id                    Every request has an id
+  FAIL   client.need-input            need-input is answered with stdin in the same session
+         need-input went unanswered (during connection 1): {id "2", session "dd88...", status ["need-input"]}
+         why: Code reading input waits until it gets some, so an unanswered need-input leaves the eval, and the session it runs in, hanging forever.
+         see: nREPL hands stdin to the reader of the request's session https://github.com/nrepl/nrepl/blob/edf294a7.../src/clojure/nrepl/middleware/session.clj#L380-L388
+  WARN   client.close                 Sessions are closed before disconnecting
+         a session was never closed (during connection 1): {id "1", new-session "dd88...", session "d5b1...", status ["done"]}
+         ...
+```
+
+The verdicts mean the same things as for servers, only the other way
+around. A failure means that some server won't work properly with your
+client (or that users will lose data), and the `see` lines link to the
+server code in question. A warning means that your client does something
+servers tolerate, but that they shouldn't have to.
+
+Keep in mind that proof can only see what goes over the wire. It checks
+the requests your client sends, but not what your client does with the
+replies. It also checks only what your client actually did - if you never
+evaluate code that reads input, nobody will know how your client handles
+`need-input`. And the checks about what a client leaves behind (sessions
+that were never closed and input that was never sent) apply only to
+connections your client closed itself while the server was still around.
+A client that's still connected when you press Ctrl-C might simply not
+have gotten to them yet, and one whose server went away first never got
+the chance.
+
+It's a good idea to try your client with a few servers, as they don't
+all support the same ops. Any profile from the [profiles](../profiles)
+folder will do, and with `-address` proof will forward your client to a
+server that's already running:
+
+```shell
+$ proof proxy -address localhost:1667
+```
+
+Here are the options supported by `proof proxy`:
+
+| Option | Description |
+|---|---|
+| `-address host:port` | Forward the client to a running server instead of starting one. |
+| `-listen host:port` | Accept the client on this address. The default is `127.0.0.1:0`, which picks a free port. |
+| `-v` | Show every message exchanged between the client and the server. |
+| `-json file` | Write a JSON report as well. |
+
+The exit codes are the same as for `proof run`, except that 1 means that
+the client failed some checks and 3 means that no client sent anything.
+
+You can also run your client's test suite through proof in CI. Start
+the proxy in the background, wait for it to accept connections, run the
+tests against it and stop it with `SIGINT`:
+
+```shell
+proof proxy -listen 127.0.0.1:7888 profiles/babashka.toml &
+proxy=$!
+until nc -z 127.0.0.1 7888; do
+  kill -0 $proxy || exit 2
+  sleep 1
+done
+# run your tests against port 7888 here
+kill -INT $proxy
+wait $proxy
+```
+
+`wait` returns the exit code of proof, so the step fails when your
+client fails some checks. The `kill -0` makes sure the step doesn't wait
+forever if proof can't start the server, and the connections `nc` makes
+don't count, as they don't send anything.
 
 ## Troubleshooting
 

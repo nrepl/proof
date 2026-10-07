@@ -108,6 +108,8 @@ func Transcript(w io.Writer, events []nrepl.Event, indent string) {
 		}
 		body := ""
 		switch {
+		case ev.Closed:
+			body = "closed the connection"
 		case ev.Err != nil:
 			body = fmt.Sprintf("undecodable frame (%v): %q", ev.Err, ev.Raw)
 		case ev.Msg != nil:
