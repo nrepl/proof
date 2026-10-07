@@ -67,6 +67,28 @@ current session") also assumes sessions.
 The `stdin` and `interrupt` examples reuse the `id` of the eval request,
 which contradicts the spec's own rule that request IDs should be unique.
 
+### Unique Request IDs
+
+The spec says that request IDs have to be unique "to the life of the
+specific server process and all clients connecting to it". CIDER, neat
+and mezcaml simply number the requests on each connection (so every
+connection starts with `"1"`), and that works fine, as servers send the
+replies to the connection the request came from. What clients really
+need is to never reuse the ID of a request that's still active. The
+`stdin` example above shows why. nREPL replies to the `stdin` request
+with a `done`, and a client that gave it the ID of the eval ends the
+eval right there. That's what proof checks for (`client.active-id`).
+
+### Closing the Socket Instead of the Session
+
+The spec says that a client may close the socket instead of sending
+`close`. That doesn't go well with sessions outliving connections (see
+below). nREPL and Babashka keep the sessions of a closed connection
+around, and in nREPL each of them has a thread of its own. REPLy and neat
+just close the socket. For now proof warns about clients that don't
+close their sessions (`client.close`), and the spec should ask clients to
+send `close`.
+
 ### The Arglists in `lookup`
 
 The spec says `arglist`, but the implementations use `arglists-str`
@@ -119,6 +141,11 @@ See the decisions above.
 - Sessions should outlive connections, and `need-input` should go to the
   connection that sent the eval, even when the session was created on
   another connection ([nrepl#183](https://github.com/nrepl/nrepl/issues/183)).
+- What servers do with a request without an `id`. The spec only says
+  that requests "should" have one, and servers disagree on what goes in
+  the replies - nREPL sends them without an `id`, Babashka with
+  `"unknown"` and Basilisp with `""`. Either way a client can't tell them
+  apart, so `id` should be required.
 - Handling of malformed input - broken messages, top-level values that
   aren't dictionaries and fields of the wrong type. In
   [nrepl#477](https://github.com/nrepl/nrepl/issues/477) such a request
