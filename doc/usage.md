@@ -388,13 +388,15 @@ for the same code:
 | `(def x 1)`, `x`, `#'x`, `(resolve 'x)`, `@#'x` | Definitions, which all sessions share |
 | `(ns foo)`, `(in-ns 'foo)`, `*ns*` | Namespaces |
 | `*1`, `*2`, `*3`, `*e` | The last results and the last exception in the session |
-| `do`, `if`, `when`, `let`, `when-let` | The usual |
+| `do`, `if`, `when`, `or`, `let`, `when-let` | The usual |
+| `(System/getProperty "user.dir")` | The path separator, the working directory and `src` as the classpath, which is what vim-fireplace asks for |
 | `(require ...)` | Nothing, as there's nothing to load |
 
 Other functions get the error Clojure gives for a symbol it can't
 resolve, and syntax proof doesn't read (e.g. sets or anonymous functions)
-gets a read error. That's enough for CIDER to connect and work, and it's
-all you need for checking output, values, errors, input and interrupts.
+gets a read error. That's enough for CIDER and vim-fireplace to connect
+and work, and it's all you need for checking output, values, errors,
+input and interrupts.
 
 When you stop it, `proof serve` checks the requests your client sent,
 just like `proof proxy` does, with the same report, exit codes and

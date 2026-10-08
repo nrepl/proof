@@ -13,6 +13,7 @@ func FuzzEval(f *testing.F) {
 		`(println "a" :k) (binding [*out* *err*] (prn 'x)) (flush)`, "(let [x 1] (when-let [y x] (if y x 2)))",
 		"(def x 1) #'x @(resolve 'x) (in-ns 'foo) (ns bar) *ns* *1 *e", `(throw (ex-info "x" {:a 1})) (ex-data *e)`,
 		"(read-line) (Thread/sleep 10) (future (println 1)) (require 'x)", "(let) (when) (1 2) '(1 \"a\") (quote)",
+		`(or nil 1) (or) (System/getProperty "user.dir") (System/getProperty 1)`,
 	} {
 		f.Add(code)
 	}

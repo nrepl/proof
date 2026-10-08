@@ -4,6 +4,7 @@ import (
 	"io"
 	"maps"
 	"net"
+	"os"
 	"reflect"
 	"slices"
 	"strings"
@@ -50,6 +51,10 @@ func eval(t *testing.T, c *nrepl.Conn, session, code string) nrepl.Response {
 
 func TestEvaluatesLikeClojure(t *testing.T) {
 	s := serveFor(t)
+	dir, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
 	cases := []struct {
 		code   string
 		values []string
@@ -71,6 +76,11 @@ func TestEvaluatesLikeClojure(t *testing.T) {
 		{code: "(def x 1) x user/x", values: []string{"#'user/x", "1", "1"}},
 		{code: "(let [x 1 y (+ x 1)] y) (when 1 2) (when nil 2) (when-let [x nil] 1) (when-let [x 3] x)",
 			values: []string{"2", "2", "nil", "nil", "3"}},
+		{code: "(or nil false) (or nil 2 (/ 1 0)) (or)", values: []string{"false", "2", "nil"}},
+		// What vim-fireplace evaluates when it connects.
+		{code: `(System/getProperty "path.separator") (or (System/getProperty "fake.class.path") (System/getProperty "java.class.path") "") ` +
+			`(System/getProperty "user.dir") (require 'clojure.repl 'clojure.java.javadoc)`,
+			values: []string{quote(string(os.PathListSeparator)), `"src"`, quote(dir), "nil"}},
 		{code: "(require 'clojure.stacktrace) (def y 1) (resolve 'y) (resolve 'nope) @(resolve 'y) @#'y",
 			values: []string{"nil", "#'user/y", "#'user/y", "nil", "1", "1"}},
 		{code: `(ex-data (ex-info "x" {:a 1}))`, values: []string{"{:a 1}"}},

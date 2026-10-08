@@ -205,10 +205,11 @@ requests, though, just like `proof proxy` does.
 
 proof is not a Clojure implementation, so `proof serve` understands only
 a small piece of Clojure. That's enough for the snippets of the nREPL
-profile, the code CIDER sends when it connects and what client tests
-need (output, values, errors, input, something to interrupt), and it
-gives the same replies as nREPL 1.7.0 for the same code. Code in other
-languages wouldn't help, as no client's tests send Erlang to a server.
+profile, the code CIDER and vim-fireplace send when they connect and
+what client tests need (output, values, errors, input, something to
+interrupt), and it gives the same replies as nREPL 1.7.0 for the same
+code. Code in other languages wouldn't help, as no client's tests send
+Erlang to a server.
 
 Some rules are about what a client leaves behind - sessions that were
 never closed and `need-input` that was never answered. They apply only
