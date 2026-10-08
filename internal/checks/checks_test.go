@@ -16,7 +16,7 @@ import (
 var fakeProfile = &profile.Profile{
 	Name:         "fake",
 	Timeout:      time.Second,
-	Capabilities: map[string]bool{"namespaces": true, "clojure": true},
+	Capabilities: map[string]bool{"namespaces": true, "clojure": true, "java": true},
 	Snippets: map[string]profile.Snippet{
 		"value":         {Code: "value", Value: "3"},
 		"stdout":        {Code: "stdout", Out: "proof"},
@@ -48,37 +48,41 @@ func TestWellBehavedServerPassesEverything(t *testing.T) {
 // other check and rule must still pass.
 func TestChecksCatchMisbehaviour(t *testing.T) {
 	F, W, S := check.Failed, check.Warned, check.Skipped
+	// What every client goes through first.
+	connects := map[string]check.Verdict{"cider.connect": F, "calva.connect": F, "conjure.connect": F, "fireplace.connect": F}
 	cases := []struct {
 		name string
 		q    quirks
 		want map[string]check.Verdict
 	}{
-		{"ops as a list", quirks{opsList: true}, map[string]check.Verdict{"describe.ops-dict": F, "describe.required-ops": S,
-			"stdin.need-input": S, "stdin.roundtrip": S, "stdin.eof": S, "cider.connect": F}},
+		// Conjure does without the features that need ops.
+		{"ops as a list", quirks{opsList: true}, checktest.Merged(connects, map[string]check.Verdict{"describe.ops-dict": F,
+			"describe.required-ops": S, "stdin.need-input": S, "stdin.roundtrip": S, "stdin.eof": S, "conjure.connect": check.Pass})},
 		{"clone not advertised", quirks{noClone: true}, map[string]check.Verdict{"describe.required-ops": F}},
 		{"no versions", quirks{noVersions: true}, map[string]check.Verdict{"describe.versions": W}},
-		{"describe kills the connection", quirks{crashOnDescribe: true}, map[string]check.Verdict{
+		{"describe kills the connection", quirks{crashOnDescribe: true}, checktest.Merged(connects, map[string]check.Verdict{
 			"describe.reply": F, "describe.ops-dict": S, "describe.required-ops": S, "describe.versions": S,
-			"stdin.need-input": S, "stdin.roundtrip": S, "stdin.eof": S, "cider.connect": F}},
+			"stdin.need-input": S, "stdin.roundtrip": S, "stdin.eof": S})},
 		{"no unknown-op", quirks{noUnknownOp: true}, map[string]check.Verdict{"op.unknown": F, "op.unknown-echo": W}},
 		{"no op echo", quirks{noOpEcho: true}, map[string]check.Verdict{"op.unknown-echo": W}},
+		// Conjure asks for ls-sessions, which the fake doesn't know.
 		{"status is a string", quirks{statusString: true}, map[string]check.Verdict{
-			"op.unknown": F, "op.unknown-echo": F, "wire.status-type": F}},
+			"op.unknown": F, "op.unknown-echo": F, "wire.status-type": F, "conjure.connect": F}},
 		{"no session-closed", quirks{noSessionClosed: true}, map[string]check.Verdict{"session.close": F}},
 		// Only clients put dicts and lists in their requests.
 		{"flat fields only", quirks{flatFields: true}, map[string]check.Verdict{
-			"cider.connect": F, "cider.eval": F, "cider.repl": F}},
+			"cider.connect": F, "cider.eval": F, "cider.repl": F, "calva.connect": F, "calva.eval": F, "conjure.eval": F}},
 		{"any session accepted", quirks{acceptAnySession: true}, map[string]check.Verdict{"session.unknown": F, "session.closed": F}},
 		{"shared session state", quirks{sharedState: true}, map[string]check.Verdict{"session.isolated": F}},
 		{"sessions tied to sockets", quirks{socketSessions: true}, map[string]check.Verdict{"session.across-connections": W}},
-		{"no ephemeral sessions", quirks{noEphemeral: true}, map[string]check.Verdict{"session.ephemeral": F}},
-		{"last value only", quirks{lastValueOnly: true}, map[string]check.Verdict{"eval.multiple-forms": F}},
+		{"no ephemeral sessions", quirks{noEphemeral: true}, map[string]check.Verdict{"session.ephemeral": F, "fireplace.connect": F}},
+		{"last value only", quirks{lastValueOnly: true}, map[string]check.Verdict{"eval.multiple-forms": F, "fireplace.connect": F}},
 		{"stderr dropped", quirks{dropErr: true}, map[string]check.Verdict{"eval.stderr": F}},
 		{"output after value", quirks{outAfterValue: true}, map[string]check.Verdict{"eval.stdout-order": W}},
 		{"no eval-error", quirks{noEvalError: true}, map[string]check.Verdict{"eval.error-status": F}},
 		{"no ex", quirks{noEx: true}, map[string]check.Verdict{"eval.error-report": W}},
 		{"no no-code", quirks{noNoCode: true}, map[string]check.Verdict{"eval.no-code": W}},
-		{"no ns", quirks{noNs: true}, map[string]check.Verdict{"eval.ns": W}},
+		{"no ns", quirks{noNs: true}, map[string]check.Verdict{"eval.ns": W, "fireplace.connect": F}},
 		{"ns fallback", quirks{nsFallback: true}, map[string]check.Verdict{"eval.unknown-ns": F}},
 		{"two dones", quirks{twoDones: true}, map[string]check.Verdict{"wire.one-done": W}},
 		{"value after done", quirks{valueAfterDone: true}, map[string]check.Verdict{"wire.after-done": W, "wire.error-terminal": F}},
@@ -89,7 +93,7 @@ func TestChecksCatchMisbehaviour(t *testing.T) {
 			"wire.id": W, "eval.stdout": F, "eval.stderr": F, "eval.error-report": W}},
 		{"integer value", quirks{intValue: true}, map[string]check.Verdict{
 			"wire.field-types": F, "eval.value": F, "eval.survives-error": F, "eval.multiple-forms": F,
-			"session.ephemeral": F, "session.persistent": F, "cider.eval": F, "cider.repl": F}},
+			"session.ephemeral": F, "session.persistent": F, "cider.eval": F, "cider.repl": F, "calva.eval": F, "conjure.eval": F, "fireplace.eval": F}},
 		{"unsorted keys", quirks{unsortedKeys: true}, map[string]check.Verdict{"wire.canonical": W}},
 		{"invalid UTF-8", quirks{badUTF8: true}, map[string]check.Verdict{"wire.utf8": W, "eval.stdout": F}},
 		{"no stdin op", quirks{noStdinOp: true}, map[string]check.Verdict{

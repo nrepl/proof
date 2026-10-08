@@ -89,15 +89,16 @@ eval
          see: nrepl/nrepl#147 https://github.com/nrepl/nrepl/issues/147
 ```
 
-The checks in the `cider` group send what CIDER sends while connecting,
-evaluating code from a source buffer and evaluating code in its REPL,
-with all the extra fields CIDER puts in its requests. If one of them
-fails, CIDER won't work properly with your server, and the report says
-what CIDER does with the reply it got (e.g. "CIDER gives up
+The checks in the `cider`, `calva`, `conjure` and `fireplace` groups send
+what those clients send while connecting and evaluating code, with all
+the extra fields they put in their requests. If one of them fails, the
+client won't work properly with your server, and the report says what
+the client does with the reply it got (e.g. "CIDER gives up
 connecting"). The code they evaluate for the user is the `value`
-snippet of your profile. Before evaluating code from a source buffer,
-CIDER evaluates the buffer's `ns` form, so `cider.eval` also needs the
-`clojure` capability.
+snippet of your profile. Before evaluating code from a source file,
+CIDER, Calva and Conjure evaluate an `ns` form for the file's namespace,
+so those checks also need the `clojure` capability. vim-fireplace finds the classpath
+with Java interop while connecting, so its checks need `java`.
 
 Each check gets one of the following verdicts:
 
@@ -394,9 +395,9 @@ for the same code:
 
 Other functions get the error Clojure gives for a symbol it can't
 resolve, and syntax proof doesn't read (e.g. sets or anonymous functions)
-gets a read error. That's enough for CIDER and vim-fireplace to connect
-and work, and it's all you need for checking output, values, errors,
-input and interrupts.
+gets a read error. That's enough for CIDER, Calva, Conjure and
+vim-fireplace to connect and work, and it's all you need for checking
+output, values, errors, input and interrupts.
 
 When you stop it, `proof serve` checks the requests your client sent,
 just like `proof proxy` does, with the same report, exit codes and

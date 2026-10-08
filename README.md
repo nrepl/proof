@@ -74,8 +74,9 @@ something differently from the reference nREPL implementation, you'll
 get a warning instead.
 
 Some of the checks send what a particular client sends, the way it sends
-it, e.g. `cider.connect` sends the requests CIDER sends while connecting. That way
-the report tells you directly whether CIDER will work with your server.
+it, e.g. `cider.connect` sends the requests CIDER sends while connecting.
+That way the report tells you directly whether CIDER, Calva, Conjure and
+vim-fireplace will work with your server.
 
 ## Checking Clients
 
@@ -127,7 +128,8 @@ the replies). `-like jank` turns on all of jank's scenarios at once, and
 
 proof is still in its early days. Right now it covers the core of the
 protocol (`describe`, unknown ops, `eval`, sessions, `stdin` and the wire format),
-what CIDER sends while connecting and evaluating code, the requests
+what CIDER, Calva, Conjure and vim-fireplace send while connecting and
+evaluating code, the requests
 clients send and the server differences clients have to deal with, and
 `proof list` will show you all the checks.
 
@@ -136,8 +138,6 @@ Here's what's coming next:
 - checks for `interrupt`, `load-file`, `completions` and `lookup`
 - robustness checks (malformed messages, fields of the wrong type,
   clients disconnecting in the middle of an evaluation)
-- client profiles for more clients (e.g. Calva, Conjure and
-  vim-fireplace)
 - publishing the compatibility matrix somewhere nicer than a CI job
   summary
 

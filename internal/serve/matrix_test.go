@@ -26,14 +26,28 @@ func serveFor(t *testing.T, scenarios ...string) *Server {
 	return s
 }
 
-// runChecks runs proof's server checks against proof serve, with the
-// snippets of the profile for nREPL itself.
-func runChecks(t *testing.T, scenarios ...string) map[string]check.Result {
+func loadProfile(t *testing.T, name string) *profile.Profile {
 	t.Helper()
-	p, err := profile.Load("../../profiles/clojure.toml")
+	p, err := profile.Load("../../profiles/" + name + ".toml")
 	if err != nil {
 		t.Fatal(err)
 	}
+	return p
+}
+
+// runChecks runs proof's server checks against proof serve, with the
+// profile for nREPL itself.
+func runChecks(t *testing.T, scenarios ...string) map[string]check.Result {
+	t.Helper()
+	return runChecksAs(t, "clojure", scenarios...)
+}
+
+// runChecksAs runs them with the snippets of nREPL's profile and the
+// capabilities of server's, so the checks for other languages skip.
+func runChecksAs(t *testing.T, server string, scenarios ...string) map[string]check.Result {
+	t.Helper()
+	p := loadProfile(t, "clojure")
+	p.Capabilities = loadProfile(t, server).Capabilities
 	p.Timeout = time.Second
 	env := &check.Env{Profile: p, Addr: serveFor(t, scenarios...).Addr(), Settle: 20 * time.Millisecond}
 	return checktest.ByID(check.Run(env, checks.All(), checks.WireRules()))
@@ -54,7 +68,9 @@ func TestScenariosGetTheVerdictsOfTheirServers(t *testing.T) {
 	}{
 		{[]string{"split-output"}, nil},
 		{[]string{"empty-messages"}, nil},
-		{[]string{"last-value"}, map[string]check.Verdict{"eval.multiple-forms": F}},
+		// None of these servers has Java interop, but vim-fireplace would
+		// run into it.
+		{[]string{"last-value"}, map[string]check.Verdict{"eval.multiple-forms": F, "fireplace.connect": F}},
 		{[]string{"no-err"}, map[string]check.Verdict{"eval.stderr": F}},
 		{[]string{"error-with-done"}, nil},
 		{[]string{"no-op-echo"}, map[string]check.Verdict{"op.unknown-echo": W}},
@@ -84,24 +100,29 @@ func TestScenariosGetTheVerdictsOfTheirServers(t *testing.T) {
 
 // A server's scenarios together get its column of the compatibility
 // matrix. The columns leave out eval.no-code, as no client sends an eval
-// without code, and the checks the profiles of dialtone and repartee skip
-// for their languages.
+// without code.
 func TestPresetsGetTheColumnsOfTheirServers(t *testing.T) {
 	F, W, S := check.Failed, check.Warned, check.Skipped
+	noJava := map[string]check.Verdict{"fireplace.connect": S, "fireplace.eval": S}
+	noLanguage := map[string]check.Verdict{"eval.ns": S, "eval.unknown-ns": S, "cider.eval": S, "calva.eval": S,
+		"conjure.eval": S}
 	columns := map[string]map[string]check.Verdict{
 		"clojure":  {"stdin.eof": W},
 		"babashka": nil,
-		"clojure-clr": {"op.unknown-echo": W, "session.across-connections": W, "session.isolated": F,
-			"session.unknown": F, "session.closed": F, "stdin.need-input": S, "stdin.roundtrip": S, "stdin.eof": S},
-		"basilisp": {"op.unknown-echo": W, "session.across-connections": W, "session.isolated": F,
-			"session.close": F, "session.unknown": F, "session.closed": F, "eval.stderr": F,
-			"eval.multiple-forms": F, "eval.unknown-ns": F, "stdin.need-input": S, "stdin.roundtrip": S, "stdin.eof": S},
-		"jank": {"describe.required-ops": F, "op.unknown-echo": W, "session.across-connections": W,
-			"session.isolated": F, "session.close": F, "session.unknown": F, "session.closed": F,
-			"eval.multiple-forms": F, "eval.unknown-ns": F, "stdin.need-input": S, "stdin.roundtrip": S,
-			"stdin.eof": S, "wire.canonical": W},
-		"dialtone": {"op.unknown-echo": W, "session.close": F, "eval.stderr": F, "eval.multiple-forms": F},
-		"repartee": {"op.unknown-echo": W, "session.close": F, "eval.stderr": F},
+		"clojure-clr": checktest.Merged(noJava, map[string]check.Verdict{"op.unknown-echo": W, "session.across-connections": W,
+			"session.isolated": F, "session.unknown": F, "session.closed": F, "stdin.need-input": S,
+			"stdin.roundtrip": S, "stdin.eof": S}),
+		"basilisp": checktest.Merged(noJava, map[string]check.Verdict{"op.unknown-echo": W, "session.across-connections": W,
+			"session.isolated": F, "session.close": F, "session.unknown": F, "session.closed": F, "eval.stderr": F,
+			"eval.multiple-forms": F, "eval.unknown-ns": F, "stdin.need-input": S, "stdin.roundtrip": S, "stdin.eof": S}),
+		"jank": checktest.Merged(noJava, map[string]check.Verdict{"describe.required-ops": F, "op.unknown-echo": W,
+			"session.across-connections": W, "session.isolated": F, "session.close": F, "session.unknown": F,
+			"session.closed": F, "eval.multiple-forms": F, "eval.unknown-ns": F, "stdin.need-input": S,
+			"stdin.roundtrip": S, "stdin.eof": S, "wire.canonical": W}),
+		"dialtone": checktest.Merged(noJava, noLanguage, map[string]check.Verdict{"op.unknown-echo": W, "session.close": F,
+			"eval.stderr": F, "eval.multiple-forms": F}),
+		"repartee": checktest.Merged(noJava, noLanguage, map[string]check.Verdict{"op.unknown-echo": W, "session.close": F,
+			"eval.stderr": F}),
 	}
 	for name, want := range columns {
 		t.Run(name, func(t *testing.T) {
@@ -110,7 +131,7 @@ func TestPresetsGetTheColumnsOfTheirServers(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			checktest.Verdicts(t, runChecks(t, scenarios...), want)
+			checktest.Verdicts(t, runChecksAs(t, name, scenarios...), want)
 		})
 	}
 	for _, p := range Presets() {

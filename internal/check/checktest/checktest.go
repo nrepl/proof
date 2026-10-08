@@ -3,6 +3,7 @@
 package checktest
 
 import (
+	"maps"
 	"sort"
 	"testing"
 
@@ -42,4 +43,13 @@ func Verdicts(t testing.TB, results map[string]check.Result, want map[string]che
 			t.Errorf("%s: no such check or rule", id)
 		}
 	}
+}
+
+// Merged merges sets of verdicts, where the later ones win.
+func Merged(verdicts ...map[string]check.Verdict) map[string]check.Verdict {
+	all := map[string]check.Verdict{}
+	for _, v := range verdicts {
+		maps.Copy(all, v)
+	}
+	return all
 }

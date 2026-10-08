@@ -21,7 +21,8 @@ func TestClientProfiles(t *testing.T) {
 	}
 	pinned := regexp.MustCompile(`^https://github\.com/[^/]+/[^/]+/blob/[0-9a-f]{40}/`)
 	// The links in refs.go to the same clients.
-	bases := map[string]string{"CIDER": ciderBase}
+	bases := map[string]string{"CIDER": ciderBase, "Calva": strings.TrimSuffix(calvaBase, "nrepl/index.ts"),
+		"Conjure": strings.TrimSuffix(conjureBase, "client/clojure/nrepl/server.fnl"), "vim-fireplace": fireplaceBase}
 	for _, p := range clientProfiles() {
 		if p.Name == "" || !pinned.MatchString(p.Code) {
 			t.Errorf("%q needs a name and links pinned to a commit, got %q", p.Name, p.Code)
@@ -38,11 +39,14 @@ func TestClientProfiles(t *testing.T) {
 				if s.Send["op"] == nil || len(s.Refs) == 0 {
 					t.Errorf("%s step %d: needs an op and a link to the client's code", c.ID, i+1)
 				}
-				if (s.NewSession != "" || s.Snippet != "" || len(s.Dicts) > 0) && s.Why == "" {
+				if (s.NewSession != "" || s.Snippet != "" || s.Values > 0 || len(s.Dicts) > 0) && s.Why == "" {
 					t.Errorf("%s step %d: doesn't say what happens to the client without what it needs", c.ID, i+1)
 				}
 				if name, ok := s.Send["session"].(string); ok && strings.HasPrefix(name, "$") && !sessions[name[1:]] {
 					t.Errorf("%s step %d: uses %s before a step gets it", c.ID, i+1, name)
+				}
+				if code, _ := s.Send["code"].(string); s.Values > len(forms(code)) {
+					t.Errorf("%s step %d: wants %d values from %d forms", c.ID, i+1, s.Values, len(forms(code)))
 				}
 				if s.NewSession != "" {
 					sessions[s.NewSession] = true
@@ -85,6 +89,24 @@ func TestNonDictField(t *testing.T) {
 	for _, c := range cases {
 		if got := nonDictField(nrepl.Response{Messages: []nrepl.Message{c.reply}}, c.path); (got != nil) != c.bad {
 			t.Errorf("%v in %v: got %v", c.path, c.reply, got)
+		}
+	}
+}
+
+func TestValuesApart(t *testing.T) {
+	cases := []struct {
+		replies []nrepl.Message
+		want    int
+	}{
+		{[]nrepl.Message{{"value": "1", "ns": "user"}, {"value": "2", "ns": "user"}}, 2},
+		// An ns on its own ends the value before it.
+		{[]nrepl.Message{{"value": "1"}, {"ns": "user"}, {"value": "2"}}, 2},
+		{[]nrepl.Message{{"value": "1"}, {"value": "2"}}, 1},
+		{[]nrepl.Message{{"ns": "user"}, {"status": []any{"done"}}}, 0},
+	}
+	for _, c := range cases {
+		if got := valuesApart(nrepl.Response{Messages: c.replies}); got != c.want {
+			t.Errorf("%v: got %d, want %d", c.replies, got, c.want)
 		}
 	}
 }

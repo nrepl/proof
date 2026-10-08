@@ -318,7 +318,7 @@ func (s *fakeServer) eval(c net.Conn, req nrepl.Message, local map[string]bool) 
 		}
 	}
 	var values []string
-	for _, form := range strings.Fields(code) {
+	for _, form := range forms(code) {
 		value, out := "nil", ""
 		switch form {
 		case "value":
