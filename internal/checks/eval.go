@@ -99,8 +99,8 @@ func evalChecks() []*check.Check {
 			ID:       "eval.error-report",
 			Title:    "A failed eval explains itself in err and ex",
 			Severity: check.Warn,
-			Why:      "err is what users see in the REPL, and CIDER's synchronous requests look at ex and err to decide whether a request failed.",
-			Refs:     []check.Ref{ciderEvalError, nreplEvalError},
+			Why:      "err is what users see when an eval fails, as clients show it like any other error output, and ex is what nREPL sends to say what was thrown.",
+			Refs:     []check.Ref{ciderStderr, nreplEvalError},
 			Snippets: []string{"throw"},
 			Requires: []string{"session.clone"},
 			Run: func(t *check.T) {
