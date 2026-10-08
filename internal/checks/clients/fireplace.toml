@@ -1,0 +1,60 @@
+# What vim-fireplace sends while connecting to a server without
+# cider-nrepl, and when it evaluates code, with its default settings. The
+# links point at the code that needs what the steps check.
+name = "vim-fireplace"
+code = "https://github.com/tpope/vim-fireplace/blob/5e66509599de92550762cf2681338fc4cd1e71cf/autoload/"
+
+# fireplace finds the classpath with Java interop, so it can connect only
+# to servers that have it.
+[[checks]]
+id = "fireplace.connect"
+title = "vim-fireplace can connect"
+why = "vim-fireplace asks for describe, evaluates code that tells it the classpath and clones a session before it can evaluate anything, so a server that gets any of it wrong can't be used from vim-fireplace at all."
+needs = ["java"]
+
+[[checks.steps]]
+send = { op = "describe", "verbose?" = 1 }
+dicts = [["ops"]]
+why = "vim-fireplace can't connect, as Vim stops with an error when it looks up an op"
+refs = ["fireplace/transport.vim#L205-L206", "fireplace/transport.vim#L258-L260"]
+
+# fireplace tells the values apart by the ns that comes with each one, and
+# reads the first three.
+[[checks.steps]]
+send = { op = "eval", code = "(System/getProperty \"path.separator\") (or (System/getProperty \"fake.class.path\") (System/getProperty \"java.class.path\") \"\") (System/getProperty \"user.dir\") (require 'clojure.repl 'clojure.java.javadoc)" }
+values = 3
+why = "vim-fireplace can't connect, as Vim stops with an error when it looks for the classpath"
+refs = ["fireplace/transport.vim#L212-L226", "fireplace/transport.vim#L24-L65"]
+
+[[checks.steps]]
+send = { op = "clone" }
+new-session = "fireplace"
+why = "vim-fireplace can't connect"
+refs = ["fireplace/session.vim#L19", "fireplace.vim#L658"]
+
+[[checks]]
+id = "fireplace.eval"
+title = "vim-fireplace can evaluate code"
+why = "vim-fireplace sends the code with its file, line and column and asks for the value to be streamed, so a server that can't handle them breaks evaluation in vim-fireplace."
+needs = ["java"]
+
+[[checks.steps]]
+send = { op = "clone" }
+new-session = "fireplace"
+why = "vim-fireplace can't connect"
+refs = ["fireplace/session.vim#L19", "fireplace.vim#L658"]
+
+# Evaluating a form from src/user.clj. A namespace other than user would
+# have to be loaded first, from the classpath.
+[[checks.steps]]
+snippet = "value"
+why = "users don't see the result of their code"
+refs = ["fireplace.vim#L1612-L1671", "fireplace.vim#L1584-L1594", "fireplace.vim#L1230-L1295"]
+
+[checks.steps.send]
+op = "eval"
+session = "$fireplace"
+file = "user.clj"
+line = 3
+column = 1
+"nrepl.middleware.print/stream?" = 1

@@ -1,0 +1,151 @@
+# What Conjure sends while connecting and when it evaluates code from a
+# source buffer, with its default settings. The links point at the code
+# that needs what the steps check.
+name = "Conjure"
+code = "https://github.com/Olical/conjure/blob/9842bf38464df071f72546f65fa6ec44942ca7b2/fnl/conjure/"
+
+# Conjure sends its own code to any server, so this check runs on servers
+# for other languages too.
+[[checks]]
+id = "conjure.connect"
+title = "Conjure can connect"
+why = "Before it evaluates anything for the user, Conjure asks for describe, clones a session (unless there's one it can use) and evaluates its own code in it, so a server that gets any of it wrong keeps Conjure users waiting for 10 seconds, and maybe without a session after that."
+
+# Conjure looks up the ops it needs in the first reply, and does without
+# the features that need the ones it can't find.
+[[checks.steps]]
+send = { op = "describe" }
+refs = ["client/clojure/nrepl/server.fnl#L304-L313", "client/clojure/nrepl/server.fnl#L315-L341"]
+
+# Conjure uses the first session it finds, and clones one when there are
+# none (or the server doesn't know ls-sessions).
+[[checks.steps]]
+send = { op = "ls-sessions" }
+refs = ["client/clojure/nrepl/server.fnl#L167-L177", "client/clojure/nrepl/server.fnl#L274-L287"]
+
+[[checks.steps]]
+send = { op = "clone", client-name = "Conjure" }
+new-session = "conjure"
+why = "Conjure gives up waiting after 10 seconds and evaluates code without a session, so nothing (e.g. *1 or *e) carries over from one evaluation to the next"
+refs = ["client/clojure/nrepl/server.fnl#L259-L272", "client/clojure/nrepl/server.fnl#L379-L392", "remote/nrepl.fnl#L48-L57"]
+
+# What kind of Clojure the session runs, which Conjure only shows. An error
+# is fine.
+[[checks.steps]]
+send = { op = "eval", session = "$conjure", code = "#?(:clj 'clj :cljs 'cljs :cljr 'cljr :default 'unknown)" }
+refs = ["client/clojure/nrepl/server.fnl#L187-L221"]
+
+# Conjure is ready once its own code is done. An error is fine.
+[[checks.steps]]
+refs = ["client/clojure/nrepl/server.fnl#L289-L302", "client/clojure/nrepl/server.fnl#L394-L402"]
+
+[checks.steps.send]
+op = "eval"
+session = "$conjure"
+code = '''
+(create-ns 'conjure.internal)
+(intern 'conjure.internal 'initial-ns (symbol (str *ns*)))
+
+(ns conjure.internal
+  (:require [clojure.pprint :as pp]
+            [clojure.test]
+            [clojure.data]
+            [clojure.string]))
+
+;; This is a shim that inserts a pprint fn in the place that CIDER would create it if it's not found.
+;; We shim instead of creating our own distinct function because babashka requires us
+;; to refer to `cider.nrepl.pprint/pprint` if we want to use pretty printing.
+;; https://github.com/Olical/conjure/issues/406
+(when-not (find-ns 'cider.nrepl.pprint)
+  (create-ns 'cider.nrepl.pprint)
+  (intern 'cider.nrepl.pprint 'pprint
+          (fn pprint [val w opts]
+            (apply pp/write val
+                   (mapcat identity (assoc opts :stream w))))))
+
+(defn bounded-conj [queue x limit]
+  (->> x (conj queue) (take limit)))
+
+(def tap-queue-size 16)
+(defonce tap-queue! (atom (list)))
+
+;; Must be a defonce so that we always have the same function
+;; reference to remove-tap and add-tap. If we make a new
+;; function each time we'll end up adding more and more tap
+;; functions.
+(defonce enqueue-tap!
+  (fn [x] (swap! tap-queue! bounded-conj x tap-queue-size)))
+
+;; No setup for older Clojure versions.
+(when (resolve 'add-tap)
+  (remove-tap enqueue-tap!)
+  (add-tap enqueue-tap!))
+
+(defn dump-tap-queue! []
+  (reverse (first (reset-vals! tap-queue! (list)))))
+
+(when true
+  (defmethod clojure.test/report :fail [m]
+    (clojure.test/with-test-out
+      (clojure.test/inc-report-counter :fail)
+      (println "\nFAIL in" (clojure.test/testing-vars-str m))
+      (when (seq clojure.test/*testing-contexts*) (println (clojure.test/testing-contexts-str)))
+      (when-let [message (:message m)] (println message))
+      (print "expected:" (with-out-str (prn (:expected m))))
+      (print "  actual:" (with-out-str (prn (:actual m))))
+      (when (and (seq? (:actual m))
+                 (= #'clojure.core/not (resolve (first (:actual m))))
+                 (seq? (second (:actual m)))
+                 (= #'clojure.core/= (resolve (first (second (:actual m)))))
+                 (= 3 (count (second (:actual m)))))
+        (let [[missing extra _] (clojure.data/diff (second (second (:actual m))) (last (second (:actual m))))
+              missing-str (with-out-str (pp/pprint missing))
+              missing-lines (clojure.string/split-lines missing-str)
+              extra-str (with-out-str (pp/pprint extra))
+              extra-lines (clojure.string/split-lines extra-str)]
+          (when (some? missing) (doseq [m missing-lines] (println "- " m)))
+          (when (some? extra) (doseq [e extra-lines] (println "+ " e))))))))
+
+(in-ns initial-ns)
+'''
+
+[[checks]]
+id = "conjure.eval"
+title = "Conjure can evaluate code from a source buffer"
+why = "Evaluating code from a source buffer sends an ns form for the buffer's namespace first, and then the code with its file, line and column and options for printing the value, so a server that can't handle either breaks evaluation in Conjure."
+needs = ["clojure"]
+
+[[checks.steps]]
+send = { op = "clone", client-name = "Conjure" }
+new-session = "conjure"
+why = "Conjure gives up waiting after 10 seconds and evaluates code without a session, so nothing (e.g. *1 or *e) carries over from one evaluation to the next"
+refs = ["client/clojure/nrepl/server.fnl#L259-L272", "client/clojure/nrepl/server.fnl#L379-L392", "remote/nrepl.fnl#L48-L57"]
+
+# The first eval in a buffer makes sure its namespace exists. Its reply
+# isn't checked.
+[[checks.steps]]
+refs = ["client/clojure/nrepl/action.fnl#L95-L110"]
+
+[checks.steps.send]
+op = "eval"
+session = "$conjure"
+code = "(ns proof.conjure)"
+"nrepl.middleware.print/print" = "cider.nrepl.pprint/pprint"
+"nrepl.middleware.print/options" = { associative = 1, length = 500, level = 50, right-margin = 72 }
+
+[[checks.steps]]
+snippet = "value"
+why = "users don't see the result of their code"
+refs = ["client/clojure/nrepl/server.fnl#L139-L152", "client/clojure/nrepl/server.fnl#L108-L137", "client/clojure/nrepl/ui.fnl#L24-L50"]
+
+# The options are a dict even when Conjure has none, which is what
+# associative is for.
+[checks.steps.send]
+op = "eval"
+session = "$conjure"
+ns = "proof.conjure"
+file = "/home/user/project/src/proof/conjure.clj"
+line = 3
+column = 1
+"nrepl.middleware.print/print" = "cider.nrepl.pprint/pprint"
+"nrepl.middleware.print/options" = { associative = 1, length = 500, level = 50, right-margin = 72 }

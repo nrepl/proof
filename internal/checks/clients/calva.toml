@@ -1,0 +1,81 @@
+# What Calva sends while connecting to a server without cider-nrepl, and
+# when it evaluates code from a source file, with its default settings.
+# The links point at the code that needs what the steps check.
+name = "Calva"
+code = "https://github.com/BetterThanTomorrow/calva/blob/ad00dd7e518e0d08262810673111eaeddc5c2fdd/src/"
+
+# Calva sends its startup code to any server, so this check runs on servers
+# for other languages too.
+[[checks]]
+id = "calva.connect"
+title = "Calva can connect"
+why = "Calva evaluates *ns* without a session, clones a session, asks for describe and evaluates its startup code before its REPL window shows a prompt, so a server that gets any of it wrong leaves Calva users without a REPL."
+
+# Calva clones a session once this is done.
+[[checks.steps]]
+send = { op = "eval", code = "*ns*" }
+refs = ["nrepl/index.ts#L262-L276", "nrepl/index.ts#L297-L299"]
+
+[[checks.steps]]
+send = { op = "clone", client-name = "Calva", client-version = "2.0.599" }
+new-session = "calva"
+why = "Calva gives up connecting after 30 seconds"
+refs = ["nrepl/index.ts#L277-L286", "nrepl/index.ts#L243-L253"]
+
+# Calva sends only the ops it finds in the first reply.
+[[checks.steps]]
+send = { op = "describe", session = "$calva", verbose = 1 }
+dicts = [["ops"]]
+why = "Calva never evaluates anything"
+refs = ["nrepl/index.ts#L260-L261", "nrepl/index.ts#L491-L493"]
+
+# The REPL window shows its prompt once the startup code is done. An error
+# is fine: Calva shows it and carries on.
+[[checks.steps]]
+refs = ["connector.ts#L547-L558"]
+
+[checks.steps.send]
+op = "eval"
+session = "$calva"
+ns = "user"
+code = "(when-let [requires (resolve 'clojure.main/repl-requires)] (clojure.core/apply clojure.core/require @requires))"
+file = "/home/user/project/.calva/repl.calva-repl"
+line = 17
+column = 1
+pprint = 1
+"nrepl.middleware.print/print" = "cider.nrepl.pprint/pprint"
+"nrepl.middleware.print/options" = { right-margin = 120, length = 50 }
+
+[[checks]]
+id = "calva.eval"
+title = "Calva can evaluate code from a source file"
+why = "Evaluating code from a source file sends the file's ns form first, and then the code with its file, line and column and options for printing the value, so a server that can't handle either breaks evaluation in Calva."
+needs = ["clojure"]
+
+[[checks.steps]]
+send = { op = "clone", client-name = "Calva", client-version = "2.0.599" }
+new-session = "calva"
+why = "Calva gives up connecting after 30 seconds"
+refs = ["nrepl/index.ts#L277-L286", "nrepl/index.ts#L243-L253"]
+
+# The REPL window's namespace is user until a reply says otherwise, so the
+# file's ns form goes first. Its reply isn't checked.
+[[checks.steps]]
+send = { op = "eval", session = "$calva", ns = "user", code = "(ns proof.calva)", pprint = 0 }
+refs = ["evaluate.ts#L185-L187", "nrepl/index.ts#L644-L650"]
+
+[[checks.steps]]
+snippet = "value"
+why = "users don't see the result of their code"
+refs = ["evaluate.ts#L191-L200", "nrepl/index.ts#L1447-L1530"]
+
+[checks.steps.send]
+op = "eval"
+session = "$calva"
+ns = "proof.calva"
+file = "/home/user/project/src/proof/calva.clj"
+line = 3
+column = 1
+pprint = 1
+"nrepl.middleware.print/print" = "cider.nrepl.pprint/pprint"
+"nrepl.middleware.print/options" = { right-margin = 120, length = 50 }

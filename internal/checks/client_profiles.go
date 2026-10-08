@@ -51,6 +51,10 @@ type clientStep struct {
 	Snippet string `toml:"snippet"`
 	// NewSession names the session the reply has to hand back.
 	NewSession string `toml:"new-session"`
+	// Values is how many values the reply has to have at least, told apart
+	// the way some clients do it: by the ns that comes with each one, or
+	// after it.
+	Values int `toml:"values"`
 	// Dicts are fields that have to be dicts if the reply has them, each
 	// a path of keys (e.g. ["versions", "clojure"]). An empty list will do
 	// too, as clients can't tell the two apart.
@@ -167,12 +171,34 @@ func (c clientCheck) replay(t *check.T) {
 				t.Stopf("%s gave the value %q instead of %q, so %s", step, got, want, s.Why)
 			}
 		}
+		if n := valuesApart(resp); n < s.Values {
+			t.Stopf("%s gave %d values that can be told apart by their ns, not %d, so %s", step, n, s.Values, s.Why)
+		}
 		for _, path := range s.Dicts {
 			if v := nonDictField(resp, path); v != nil {
 				t.Stopf("%s has %s that is %s, not a dict, so %s", step, strings.Join(path, "."), typeName(v), s.Why)
 			}
 		}
 	}
+}
+
+// valuesApart counts the values of a reply the way clients that tell
+// them apart by ns do, where the parts of a value up to the next ns are
+// one value.
+func valuesApart(resp nrepl.Response) int {
+	n, open := 0, false
+	for _, m := range resp.Messages {
+		if v, _ := m["value"].(string); v != "" {
+			open = true
+		}
+		if m.Has("ns") && open {
+			n, open = n+1, false
+		}
+	}
+	if open {
+		n++
+	}
+	return n
 }
 
 // nonDictField returns the field at path in a reply (e.g. versions, then
