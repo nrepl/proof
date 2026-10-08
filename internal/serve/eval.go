@@ -7,6 +7,7 @@ import (
 	"maps"
 	"math"
 	"math/big"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -352,6 +353,16 @@ func init() {
 		},
 		"let":      binder("let"),
 		"when-let": binder("when-let"),
+		"or": func(e *evaluation, args []any) (any, error) {
+			var v any
+			for _, arg := range args {
+				var err error
+				if v, err = e.eval(arg); err != nil || truthy(v) {
+					return v, err
+				}
+			}
+			return v, nil
+		},
 		"if": func(e *evaluation, args []any) (any, error) {
 			if len(args) < 2 || len(args) > 3 {
 				return nil, arity("if", len(args))
@@ -512,6 +523,29 @@ func init() {
 				return nil, throwf("java.lang.UnsupportedOperationException", "proof serve runs futures once the eval is done, so it can't wait for one")
 			}
 			return nil, castError(args[0], "java.util.concurrent.Future")
+		},
+		// What vim-fireplace asks for to find the classpath.
+		"System/getProperty": func(e *evaluation, args []any) (any, error) {
+			if len(args) != 1 {
+				return nil, arity("System/getProperty", len(args))
+			}
+			key, ok := args[0].(string)
+			if !ok {
+				return nil, castError(args[0], "java.lang.String")
+			}
+			switch key {
+			case "path.separator":
+				return string(os.PathListSeparator), nil
+			case "java.class.path":
+				return "src", nil
+			case "user.dir":
+				dir, err := os.Getwd()
+				if err != nil {
+					return nil, nil
+				}
+				return dir, nil
+			}
+			return nil, nil
 		},
 		"Thread/sleep": func(e *evaluation, args []any) (any, error) {
 			if len(args) != 1 {
