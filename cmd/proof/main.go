@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/signal"
 	"path"
+	"strings"
 	"syscall"
 	"time"
 
@@ -74,7 +75,7 @@ func printUsage(w io.Writer) {
 	fmt.Fprint(w, "\nProxy flags:\n")
 	proxyFlags(w, &proxyOptions{}).PrintDefaults()
 	fmt.Fprint(w, "\nServe flags:\n")
-	serveFlags(w, &clientOptions{}).PrintDefaults()
+	serveFlags(w, &serveOptions{}).PrintDefaults()
 }
 
 type options struct {
@@ -280,12 +281,31 @@ func filter(all []*check.Check, pattern string) ([]*check.Check, error) {
 	return out, nil
 }
 
+// The names in proof list take up this many columns, and its wrapped lines
+// stay within lineWidth.
+const nameWidth, lineWidth = 28, 100
+
 func list(w io.Writer) {
 	for _, e := range append(catalog(), ruleEntries(checks.ClientRules())...) {
-		fmt.Fprintf(w, "%-28s %-4s %s\n", e.id, e.severity, e.title)
+		fmt.Fprintf(w, "%-*s %-4s %s\n", nameWidth, e.id, e.severity, e.title)
 	}
 	fmt.Fprint(w, "\nScenarios for proof serve:\n")
 	for _, s := range serve.Scenarios() {
-		fmt.Fprintf(w, "%-28s %s (%s)\n", s.Name, s.Title, s.Who)
+		fmt.Fprintf(w, "%-*s %s (%s)\n", nameWidth, s.Name, s.Title, s.Who)
+	}
+	fmt.Fprint(w, "\nServers for proof serve -like, with their scenarios:\n")
+	for _, p := range serve.Presets() {
+		line := fmt.Sprintf("%-*s", nameWidth, p.Name)
+		for i, s := range p.Scenarios {
+			if i > 0 {
+				line += ","
+				if len(line)+len(" "+s+",") > lineWidth {
+					fmt.Fprintln(w, line)
+					line = strings.Repeat(" ", nameWidth)
+				}
+			}
+			line += " " + s
+		}
+		fmt.Fprintln(w, line)
 	}
 }

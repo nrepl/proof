@@ -2,6 +2,8 @@ package serve
 
 import (
 	"fmt"
+	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -71,24 +73,72 @@ func TestScenariosGetTheVerdictsOfTheirServers(t *testing.T) {
 		{[]string{"unsorted-keys"}, map[string]check.Verdict{"wire.canonical": W}},
 		{[]string{"byte-writes"}, nil},
 		{[]string{"batched-writes"}, nil},
-		// The columns of whole servers, except for eval.no-code, which no
-		// scenario covers as no client sends an eval without code.
-		{[]string{"no-op-echo", "socket-sessions", "shared-state", "no-session-closed", "any-session", "no-err",
-			"last-value", "ns-error", "no-stdin", "no-interrupt", "split-output"}, // Basilisp
-			map[string]check.Verdict{"op.unknown-echo": W, "session.across-connections": W, "session.isolated": F,
-				"session.close": F, "session.unknown": F, "session.closed": F, "eval.stderr": F,
-				"eval.multiple-forms": F, "eval.unknown-ns": F, "stdin.need-input": S, "stdin.roundtrip": S, "stdin.eof": S}},
-		{[]string{"no-close-op", "no-op-echo", "socket-sessions", "shared-state", "no-session-closed", "any-session",
-			"last-value", "ns-fallback", "read-line-throws", "no-interrupt", "unsorted-keys", "empty-messages", "error-with-done"}, // jank
-			map[string]check.Verdict{"describe.required-ops": F, "op.unknown-echo": W, "session.across-connections": W,
-				"session.isolated": F, "session.close": F, "session.unknown": F, "session.closed": F,
-				"eval.multiple-forms": F, "eval.unknown-ns": F, "stdin.need-input": S, "stdin.roundtrip": S,
-				"stdin.eof": S, "wire.canonical": W}},
 	}
 	for _, c := range cases {
 		t.Run(fmt.Sprint(c.scenarios), func(t *testing.T) {
 			t.Parallel()
 			checktest.Verdicts(t, runChecks(t, c.scenarios...), c.want)
 		})
+	}
+}
+
+// A server's scenarios together get its column of the compatibility
+// matrix. The columns leave out eval.no-code, as no client sends an eval
+// without code, and the checks the profiles of dialtone and repartee skip
+// for their languages.
+func TestPresetsGetTheColumnsOfTheirServers(t *testing.T) {
+	F, W, S := check.Failed, check.Warned, check.Skipped
+	columns := map[string]map[string]check.Verdict{
+		"clojure":  {"stdin.eof": W},
+		"babashka": nil,
+		"clojure-clr": {"op.unknown-echo": W, "session.across-connections": W, "session.isolated": F,
+			"session.unknown": F, "session.closed": F, "stdin.need-input": S, "stdin.roundtrip": S, "stdin.eof": S},
+		"basilisp": {"op.unknown-echo": W, "session.across-connections": W, "session.isolated": F,
+			"session.close": F, "session.unknown": F, "session.closed": F, "eval.stderr": F,
+			"eval.multiple-forms": F, "eval.unknown-ns": F, "stdin.need-input": S, "stdin.roundtrip": S, "stdin.eof": S},
+		"jank": {"describe.required-ops": F, "op.unknown-echo": W, "session.across-connections": W,
+			"session.isolated": F, "session.close": F, "session.unknown": F, "session.closed": F,
+			"eval.multiple-forms": F, "eval.unknown-ns": F, "stdin.need-input": S, "stdin.roundtrip": S,
+			"stdin.eof": S, "wire.canonical": W},
+		"dialtone": {"op.unknown-echo": W, "session.close": F, "eval.stderr": F, "eval.multiple-forms": F},
+		"repartee": {"op.unknown-echo": W, "session.close": F, "eval.stderr": F},
+	}
+	for name, want := range columns {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			scenarios, err := Like(name, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			checktest.Verdicts(t, runChecks(t, scenarios...), want)
+		})
+	}
+	for _, p := range Presets() {
+		if _, ok := columns[p.Name]; !ok {
+			t.Errorf("no column for %s", p.Name)
+		}
+	}
+}
+
+// Each server is named by its profile, and the scenarios it has say they're
+// what it does.
+func TestPresetsMatchTheScenarios(t *testing.T) {
+	for _, p := range Presets() {
+		prof, err := profile.Load("../../profiles/" + p.Name + ".toml")
+		if err != nil {
+			t.Errorf("%s isn't the name of a profile: %v", p.Name, err)
+			continue
+		}
+		// e.g. "ClojureCLR (clr.tools.nrepl 0.1.2-alpha2)" says ClojureCLR,
+		// but the profile of nREPL itself is named after Clojure.
+		server, _, _ := strings.Cut(prof.Name, " (")
+		if p.Name == "clojure" {
+			server = "nREPL 1.7.0"
+		}
+		for _, s := range Scenarios() {
+			if slices.Contains(p.Scenarios, s.Name) && !strings.Contains(s.Who, server) {
+				t.Errorf("%s has %s, which doesn't say %s does it", p.Name, s.Name, server)
+			}
+		}
 	}
 }

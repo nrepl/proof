@@ -7,6 +7,8 @@ import (
 	"io"
 	"os"
 	"os/signal"
+	"path/filepath"
+	"slices"
 	"strings"
 	"syscall"
 	"time"
@@ -15,9 +17,15 @@ import (
 	"github.com/nrepl/proof/internal/serve"
 )
 
-func serveFlags(out io.Writer, o *clientOptions) *flag.FlagSet {
+type serveOptions struct {
+	clientOptions
+	like string
+}
+
+func serveFlags(out io.Writer, o *serveOptions) *flag.FlagSet {
 	fs := flag.NewFlagSet("serve", flag.ContinueOnError)
 	fs.SetOutput(out)
+	fs.StringVar(&o.like, "like", "", "behave like the server whose `profile` has this name (e.g. jank or profiles/jank.toml), along with any scenarios given")
 	o.register(fs)
 	return fs
 }
@@ -35,12 +43,27 @@ func runServe(args []string) int {
 func serveUntil(ctx context.Context, args []string, stdout, stderr io.Writer, listening func(addr string)) int {
 	// The server logs to stderr from goroutines of its own.
 	stderr = &syncWriter{w: stderr}
-	var o clientOptions
+	var o serveOptions
 	fs := serveFlags(stderr, &o)
 	if err := fs.Parse(args); err != nil {
 		return 2
 	}
-	srv, err := serve.Listen(o.listen, version, fs.Args())
+	scenarios, shown := fs.Args(), fs.Args()
+	// The flag package stops at the first scenario.
+	if i := slices.IndexFunc(scenarios, func(s string) bool { return strings.HasPrefix(s, "-") }); i >= 0 {
+		fmt.Fprintf(stderr, "proof: %s comes after a scenario, but flags have to go first\n", scenarios[i])
+		return 2
+	}
+	if o.like != "" {
+		name := strings.TrimSuffix(filepath.Base(o.like), ".toml")
+		var err error
+		if scenarios, err = serve.Like(name, scenarios); err != nil {
+			fmt.Fprintln(stderr, "proof:", err)
+			return 2
+		}
+		shown = append([]string{"like " + name}, shown...)
+	}
+	srv, err := serve.Listen(o.listen, version, scenarios)
 	if err != nil {
 		fmt.Fprintln(stderr, "proof:", err)
 		return 2
@@ -49,8 +72,8 @@ func serveUntil(ctx context.Context, args []string, stdout, stderr io.Writer, li
 	go srv.Serve()
 	started := time.Now()
 	name := "proof serve"
-	if fs.NArg() > 0 {
-		name += " (" + strings.Join(fs.Args(), ", ") + ")"
+	if len(shown) > 0 {
+		name += " (" + strings.Join(shown, ", ") + ")"
 	}
 	fmt.Fprintf(stderr, "Running %s on %s. Connect your client and press Ctrl-C when it's done.\n", name, srv.Addr())
 	if listening != nil {
@@ -60,5 +83,5 @@ func serveUntil(ctx context.Context, args []string, stdout, stderr io.Writer, li
 	<-ctx.Done()
 	fmt.Fprintln(stderr)
 	r := report.Run{Proof: version, Server: "client traffic to " + name, Address: srv.Addr(), Started: started}
-	return gradeClients(stdout, stderr, r, srv.Stop(time.Second), o, nil)
+	return gradeClients(stdout, stderr, r, srv.Stop(time.Second), o.clientOptions, nil)
 }

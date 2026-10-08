@@ -149,7 +149,7 @@ Here are the options supported by `proof run`:
 | 3 | Some checks couldn't run at all. Usually this means that the server died during the run. |
 
 There are a couple of other commands as well. `proof list` shows all
-the checks along with their severity (and the scenarios of
+the checks along with their severity (and the scenarios and servers of
 `proof serve`), and `proof version` shows the version of proof.
 
 ## Running proof in CI
@@ -336,6 +336,22 @@ the scenarios, and every one of them is something a real server does
 | `batched-writes` | Replies are held back and written together until the eval waits or ends | any server |
 | `hang-up` | The server closes the connection instead of answering an `eval` | any server that crashes |
 
+`-like` turns on all the scenarios of a server at once. It takes the
+server's profile (e.g. `jank` or `profiles/jank.toml`), and `proof list`
+shows which scenarios each server gets:
+
+```shell
+$ proof serve -listen 127.0.0.1:7888 -like jank
+Running proof serve (like jank) on 127.0.0.1:7888. Connect your client and press Ctrl-C when it's done.
+```
+
+proof's own checks give `proof serve -like jank` the same results jank
+gets in the compatibility matrix, and the same goes for the other
+servers. There are a couple of exceptions. No scenario covers
+`eval.no-code`, as clients always send some code, and the code is still
+Clojure, even with `-like dialtone`. So the checks the profiles of
+dialtone and repartee skip for their languages (e.g. `eval.ns`) pass.
+
 Most scenarios change only how the replies look on the wire, not what a
 user should end up seeing. Evaluating `(println "hi") (+ 1 2)` should
 show `hi` and `3` with `split-output`, `byte-writes` or
@@ -370,12 +386,13 @@ gets a read error. That's enough for CIDER to connect and work, and it's
 all you need for checking output, values, errors, input and interrupts.
 
 When you stop it, `proof serve` checks the requests your client sent,
-just like `proof proxy` does, with the same report, options (except for
-`-address`) and exit codes. A test suite can run it in CI like this:
+just like `proof proxy` does, with the same report, exit codes and
+`-listen`, `-json` and `-v` options. A test suite can run it in CI like
+this:
 
 ```shell
-for scenario in "" split-output last-value no-err byte-writes; do
-  proof serve -listen 127.0.0.1:7888 $scenario &
+for args in "" split-output byte-writes -like=basilisp -like=jank; do
+  proof serve -listen 127.0.0.1:7888 $args &
   serve=$!
   until nc -z 127.0.0.1 7888; do
     kill -0 $serve || exit 2
