@@ -320,9 +320,10 @@ the scenarios, and every one of them is something a real server does
 | `error-with-done` | `eval-error` comes in the same message as `done` | jank |
 | `no-op-echo` | Replies to unknown ops don't say which op it was | ClojureCLR, Basilisp, jank, dialtone, repartee |
 | `no-close-op` | `describe` doesn't list `close`, even though `close` works | jank |
-| `no-interrupt` | There's no `interrupt` op | Basilisp, jank |
-| `no-stdin` | There's no `stdin` op, and reading input gets an empty string right away | Basilisp |
-| `string-versions` | `versions.proof` is a plain string rather than a dict | Babashka, for `versions.babashka` |
+| `no-interrupt` | There's no `interrupt` op | ClojureCLR, Basilisp, jank |
+| `no-stdin` | There's no `stdin` op, and reading input gets `nil` right away | ClojureCLR and Basilisp started in the background, as they read their own stdin, where Basilisp gets an empty string |
+| `read-line-throws` | There's no `stdin` op, and reading input throws | jank |
+| `string-versions` | `versions.proof` is a plain string rather than a dict | Babashka for `versions.babashka`, ClojureCLR for `versions.clojure.tools.nrepl` |
 | `no-session-closed` | `close` replies with `done` alone | Basilisp, jank, dialtone, repartee |
 | `shared-state` | Sessions on the same connection share `*1`, `*e` and the current namespace | ClojureCLR, Basilisp, jank |
 | `socket-sessions` | A session only exists on the connection that cloned it | ClojureCLR, Basilisp, jank |

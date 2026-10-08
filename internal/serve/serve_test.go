@@ -189,7 +189,9 @@ func TestInput(t *testing.T) {
 		{scenario: "eof-error", inputs: []string{"", ""},
 			err: strings.Repeat("Execution error (ClassCastException) at user/eval1 (REPL:1).\n"+
 				"class java.lang.Long cannot be cast to class java.lang.Character\n", 2)},
-		{scenario: "no-stdin", values: []string{`""`, `""`}},
+		{scenario: "no-stdin", values: []string{"nil", "nil"}},
+		{scenario: "read-line-throws",
+			err: strings.Repeat("Execution error (ExceptionInfo) at user/eval1 (REPL:1).\nTODO: port read-line\n", 2)},
 	}
 	for _, tc := range cases {
 		t.Run(strings.Join(append([]string{tc.scenario}, tc.inputs...), "|"), func(t *testing.T) {
@@ -380,6 +382,8 @@ func TestDescribe(t *testing.T) {
 		{nil, []string{"clone", "close", "describe", "eval", "interrupt", "stdin"},
 			map[string]any{"major": int64(0), "minor": int64(1), "incremental": int64(0), "version-string": "0.1.0-dev"}},
 		{[]string{"no-close-op", "no-interrupt", "no-stdin", "string-versions"}, []string{"clone", "describe", "eval"}, "0.1.0-dev"},
+		{[]string{"read-line-throws"}, []string{"clone", "close", "describe", "eval", "interrupt"},
+			map[string]any{"major": int64(0), "minor": int64(1), "incremental": int64(0), "version-string": "0.1.0-dev"}},
 	}
 	for _, tc := range cases {
 		c := connect(t, serveFor(t, tc.scenarios...))
@@ -396,10 +400,10 @@ func TestDescribe(t *testing.T) {
 }
 
 func TestOpsTheScenariosTakeAway(t *testing.T) {
-	c := connect(t, serveFor(t, "no-interrupt", "no-stdin"))
-	for _, op := range []string{"interrupt", "stdin"} {
+	for scenario, op := range map[string]string{"no-interrupt": "interrupt", "no-stdin": "stdin", "read-line-throws": "stdin"} {
+		c := connect(t, serveFor(t, scenario))
 		if r := request(t, c, nrepl.Message{"op": op, "session": clone(t, c)}); !r.HasStatus("unknown-op") {
-			t.Errorf("%s: %v", op, r.Status())
+			t.Errorf("%s: %s got %v", scenario, op, r.Status())
 		}
 	}
 }

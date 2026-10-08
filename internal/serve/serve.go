@@ -220,7 +220,7 @@ func (s *Server) offers(op string) bool {
 	case "interrupt":
 		return !s.b.noInterrupt
 	case "stdin":
-		return !s.b.noStdin
+		return s.b.stdin == askForInput
 	}
 	return slices.Contains(ops, op)
 }
@@ -467,9 +467,13 @@ func (s *Server) runEval(sess *session, j *job) {
 			}
 		},
 		readLine: func(interrupts <-chan struct{}) (any, error) {
-			if s.b.noStdin {
-				// Basilisp's read-line gets an empty string right away.
-				return "", nil
+			switch s.b.stdin {
+			case throwOnRead:
+				// What jank says.
+				return nil, throwf("clojure.lang.ExceptionInfo", "TODO: port read-line")
+			case endOfInput:
+				// The end of the server's own stdin.
+				return nil, nil
 			}
 			line, ok, err := sess.readLine(s.ctx, interrupts, func() { reply(map[string]any{"status": []any{"need-input"}}) })
 			switch {
