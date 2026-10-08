@@ -9,6 +9,7 @@ startup-timeout = "120s"
 
 [capabilities]
 namespaces = true
+clojure = true
 
 [snippets.value]
 code = "(+ 1 2)"

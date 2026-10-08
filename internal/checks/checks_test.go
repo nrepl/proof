@@ -14,7 +14,7 @@ import (
 var fakeProfile = &profile.Profile{
 	Name:         "fake",
 	Timeout:      time.Second,
-	Capabilities: map[string]bool{"namespaces": true},
+	Capabilities: map[string]bool{"namespaces": true, "clojure": true},
 	Snippets: map[string]profile.Snippet{
 		"value":         {Code: "value", Value: "3"},
 		"stdout":        {Code: "stdout", Out: "proof"},
@@ -29,8 +29,13 @@ var fakeProfile = &profile.Profile{
 
 func runFake(t *testing.T, q quirks) map[string]check.Result {
 	t.Helper()
+	return runFakeChecks(t, q, All(), WireRules()...)
+}
+
+func runFakeChecks(t *testing.T, q quirks, checks []*check.Check, rules ...*check.Rule) map[string]check.Result {
+	t.Helper()
 	env := &check.Env{Profile: fakeProfile, Addr: startFake(t, q), Settle: 20 * time.Millisecond}
-	return checktest.ByID(check.Run(env, All(), WireRules()))
+	return checktest.ByID(check.Run(env, checks, rules))
 }
 
 func TestWellBehavedServerPassesEverything(t *testing.T) {
@@ -47,17 +52,20 @@ func TestChecksCatchMisbehaviour(t *testing.T) {
 		want map[string]check.Verdict
 	}{
 		{"ops as a list", quirks{opsList: true}, map[string]check.Verdict{"describe.ops-dict": F, "describe.required-ops": S,
-			"stdin.need-input": S, "stdin.roundtrip": S, "stdin.eof": S}},
+			"stdin.need-input": S, "stdin.roundtrip": S, "stdin.eof": S, "cider.connect": F}},
 		{"clone not advertised", quirks{noClone: true}, map[string]check.Verdict{"describe.required-ops": F}},
 		{"no versions", quirks{noVersions: true}, map[string]check.Verdict{"describe.versions": W}},
 		{"describe kills the connection", quirks{crashOnDescribe: true}, map[string]check.Verdict{
 			"describe.reply": F, "describe.ops-dict": S, "describe.required-ops": S, "describe.versions": S,
-			"stdin.need-input": S, "stdin.roundtrip": S, "stdin.eof": S}},
+			"stdin.need-input": S, "stdin.roundtrip": S, "stdin.eof": S, "cider.connect": F}},
 		{"no unknown-op", quirks{noUnknownOp: true}, map[string]check.Verdict{"op.unknown": F, "op.unknown-echo": W}},
 		{"no op echo", quirks{noOpEcho: true}, map[string]check.Verdict{"op.unknown-echo": W}},
 		{"status is a string", quirks{statusString: true}, map[string]check.Verdict{
 			"op.unknown": F, "op.unknown-echo": F, "wire.status-type": F}},
 		{"no session-closed", quirks{noSessionClosed: true}, map[string]check.Verdict{"session.close": F}},
+		// Only clients put dicts and lists in their requests.
+		{"flat fields only", quirks{flatFields: true}, map[string]check.Verdict{
+			"cider.connect": F, "cider.eval": F, "cider.repl": F}},
 		{"any session accepted", quirks{acceptAnySession: true}, map[string]check.Verdict{"session.unknown": F, "session.closed": F}},
 		{"shared session state", quirks{sharedState: true}, map[string]check.Verdict{"session.isolated": F}},
 		{"sessions tied to sockets", quirks{socketSessions: true}, map[string]check.Verdict{"session.across-connections": W}},
@@ -79,7 +87,7 @@ func TestChecksCatchMisbehaviour(t *testing.T) {
 			"wire.id": W, "eval.stdout": F, "eval.stderr": F, "eval.error-report": W}},
 		{"integer value", quirks{intValue: true}, map[string]check.Verdict{
 			"wire.field-types": F, "eval.value": F, "eval.survives-error": F, "eval.multiple-forms": F,
-			"session.ephemeral": F, "session.persistent": F}},
+			"session.ephemeral": F, "session.persistent": F, "cider.eval": F, "cider.repl": F}},
 		{"unsorted keys", quirks{unsortedKeys: true}, map[string]check.Verdict{"wire.canonical": W}},
 		{"invalid UTF-8", quirks{badUTF8: true}, map[string]check.Verdict{"wire.utf8": W, "eval.stdout": F}},
 		{"no stdin op", quirks{noStdinOp: true}, map[string]check.Verdict{

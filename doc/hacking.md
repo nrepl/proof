@@ -45,7 +45,7 @@ $ bin/proof run profiles/clojure.toml
 | `internal/profile` | Loading and validating profiles. |
 | `internal/server` | Starting servers and figuring out their ports. |
 | `internal/check` | The checks framework (`Check`, `T`, `Rule`), grading and expected failures. It doesn't know anything about specific ops. `checktest` has helpers for testing checks. |
-| `internal/checks` | The checks (`describe.go`, `op.go`, `session.go` and `eval.go`), the wire checks (`wire.go`), the client rules (`client.go`), the links to client and server code (`refs.go`), the fake server used to test all of them (`fake_test.go`) and a scripted client for testing the client rules (`client_test.go`). |
+| `internal/checks` | The checks (`describe.go`, `op.go`, `session.go` and `eval.go`), the wire checks (`wire.go`), the client rules (`client.go`), the client profiles (`clients/` and `client_profiles.go`), the links to client and server code (`refs.go`), the fake server used to test all of them (`fake_test.go`) and a scripted client for testing the client rules (`client_test.go`). |
 | `internal/clients` | Accepting clients, recording what they say and stopping, for `proof proxy` and `proof serve`. |
 | `internal/proxy` | Forwarding the traffic between a client and a server, for `proof proxy`. |
 | `internal/serve` | The server behind `proof serve`: its piece of Clojure (`lang.go` and `eval.go`), the scenarios (`scenarios.go`), sessions (`session.go`) and the server itself (`serve.go`). |
@@ -224,6 +224,49 @@ to a socket and prints the replies is all you need for that.
 
 Every client rule needs a quirk in `clientQuirks` and an entry in the
 table in `TestClientRulesCatchMistakes` (both in `client_test.go`).
+
+## Adding a Client Profile
+
+The client profiles live in `internal/checks/clients`, one TOML file per
+client, and proof reads them when it starts. Here's a check from
+`cider.toml`:
+
+```toml
+[[checks]]
+id = "cider.eval"
+title = "CIDER can evaluate code from a source buffer"
+why = "Evaluating code from a source buffer sends ..."
+needs = ["clojure"]
+
+[[checks.steps]]
+send = { op = "clone", client-name = "CIDER", client-version = "2.1.0-snapshot" }
+new-session = "repl"
+why = "CIDER gives up connecting"
+refs = ["nrepl-client.el#L749-L760"]
+```
+
+Each step sends a request and says what the client needs from the reply
+besides `done`:
+
+| Option | What the reply needs |
+|---|---|
+| `new-session` | A `new-session`, which later steps can use as `$` and this name (e.g. `session = "$repl"`). |
+| `snippet` | The value of this snippet of the server's profile, with all the parts it came in joined together. Its code goes in the request, as it stands for the user's code. |
+| `dicts` | These fields have to be dicts (or empty lists), if the reply has them. Each one is a list of keys, e.g. `["versions", "clojure"]`. |
+
+`why` says what happens in the client when the reply doesn't have what
+the step needs, and `refs` point at the client code in question,
+starting from the profile's `code` (which is pinned to a commit, just
+like the links in `refs.go`). A check that sends code in some language
+should list the capability for it in `needs`, unless the client sends
+that code to any server (like CIDER's startup code).
+
+To find out what a client sends, run it through `proof proxy` with `-v`,
+which shows every request. Then read the client's code to see what it
+does with each reply, and keep only what the client really needs.
+`TestClientProfiles` makes sure a profile hangs together, and the fake
+server should get a quirk for anything a profile catches that the other
+checks don't.
 
 ## Adding a Scenario
 

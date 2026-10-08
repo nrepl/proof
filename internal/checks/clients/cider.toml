@@ -1,0 +1,118 @@
+# What CIDER sends while connecting to a server without cider-nrepl, and
+# when it evaluates code, with its default settings. The links point at
+# the code that needs what the steps check.
+name = "CIDER"
+code = "https://github.com/clojure-emacs/cider/blob/9e049baa1c2c136724d7538b1df6898ee77de6e7/lisp/"
+
+# CIDER sends its startup code to any server, so this check runs on servers
+# for other languages too.
+[[checks]]
+id = "cider.connect"
+title = "CIDER can connect"
+why = "CIDER clones two sessions, asks for describe and evaluates its startup code before it shows a prompt, so a server that gets any of it wrong leaves CIDER users without a REPL."
+
+[[checks.steps]]
+send = { op = "clone", client-name = "CIDER", client-version = "2.1.0-snapshot" }
+new-session = "repl"
+why = "CIDER gives up connecting"
+refs = ["nrepl-client.el#L749-L760"]
+
+[[checks.steps]]
+send = { op = "clone", client-name = "CIDER", client-version = "2.1.0-snapshot" }
+new-session = "tooling"
+why = "CIDER gives up connecting"
+refs = ["nrepl-client.el#L749-L760"]
+
+# The REPL's banner looks up the versions of Clojure, nREPL and Java.
+[[checks.steps]]
+send = { op = "describe", session = "$repl" }
+dicts = [["ops"], ["aux"], ["versions"], ["versions", "clojure"], ["versions", "nrepl"], ["versions", "java"]]
+why = "CIDER fails whenever it looks something up in it"
+refs = ["nrepl-client.el#L233-L242", "cider-session.el#L220-L242", "cider-repl.el#L361-L366"]
+
+# The REPL shows its prompt once the startup code is done. An eval error is
+# fine: CIDER shows it and carries on.
+[[checks.steps]]
+refs = ["cider-repl.el#L287-L312"]
+
+[checks.steps.send]
+op = "eval"
+session = "$repl"
+code = "(when-let [requires (resolve 'clojure.main/repl-requires)]\n  (clojure.core/apply clojure.core/require @requires))"
+file = "*cider-repl ~/project:localhost:7888(clj)*"
+line = 6
+column = 1
+"nrepl.middleware.print/stream?" = "1"
+"nrepl.middleware.print/print" = "cider.nrepl.pprint/clojure-pprint"
+"nrepl.middleware.print/quota" = 1048576
+"nrepl.middleware.print/buffer-size" = 4096
+"nrepl.middleware.print/options" = { right-margin = 70 }
+content-type = "true"
+inhibit-cider-middleware = "true"
+
+[[checks]]
+id = "cider.eval"
+title = "CIDER can evaluate code from a source buffer"
+why = "Evaluating code from a source buffer sends the buffer's ns form first, and then the code with its file, line and column and options for printing the value, so a server that can't handle either breaks evaluation in CIDER's source buffers."
+needs = ["clojure"]
+
+[[checks.steps]]
+send = { op = "clone", client-name = "CIDER", client-version = "2.1.0-snapshot" }
+new-session = "repl"
+why = "CIDER gives up connecting"
+refs = ["nrepl-client.el#L749-L760"]
+
+# The first eval in a buffer makes sure its namespace exists, and gives up
+# if that takes more than 30 seconds. Its reply isn't checked.
+[[checks.steps]]
+send = { op = "eval", session = "$repl", code = "(ns proof.cider)\n" }
+refs = ["cider-eval.el#L800-L819"]
+
+[[checks.steps]]
+snippet = "value"
+why = "users don't see the result of their code"
+refs = ["cider-eval.el#L851-L914", "cider-eval.el#L571-L576"]
+
+[checks.steps.send]
+op = "eval"
+session = "$repl"
+ns = "proof.cider"
+file = "/home/user/project/src/proof/cider.clj"
+line = 3
+column = 1
+content-type = "true"
+"nrepl.middleware.print/print" = "cider.nrepl.pprint/pr"
+# An empty list is false to nREPL.
+"nrepl.middleware.print/stream?" = []
+"nrepl.middleware.print/quota" = 1048576
+
+[[checks]]
+id = "cider.repl"
+title = "CIDER's REPL can evaluate code"
+why = "The REPL sends the code with its line and column and options for pretty-printing and streaming the value, so a server that can't handle them breaks CIDER's REPL."
+
+[[checks.steps]]
+send = { op = "clone", client-name = "CIDER", client-version = "2.1.0-snapshot" }
+new-session = "repl"
+why = "CIDER gives up connecting"
+refs = ["nrepl-client.el#L749-L760"]
+
+[[checks.steps]]
+snippet = "value"
+why = "users don't see the result of their code"
+refs = ["cider-repl.el#L1390-L1429", "cider-repl.el#L1353-L1354"]
+
+# The namespace is user until a reply says otherwise.
+[checks.steps.send]
+op = "eval"
+session = "$repl"
+ns = "user"
+file = "*cider-repl ~/project:localhost:7888(clj)*"
+line = 7
+column = 7
+"nrepl.middleware.print/stream?" = "1"
+"nrepl.middleware.print/print" = "cider.nrepl.pprint/clojure-pprint"
+"nrepl.middleware.print/quota" = 1048576
+"nrepl.middleware.print/buffer-size" = 4096
+"nrepl.middleware.print/options" = { right-margin = 70 }
+content-type = "true"

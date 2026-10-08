@@ -109,6 +109,7 @@ capability your profile doesn't declare are skipped.
 | Capability | When to set it | Checks that need it |
 |---|---|---|
 | `namespaces` | Your language has a notion of a current namespace that can be set with the `ns` field of a request (like Clojure). | `eval.ns`, `eval.unknown-ns` |
+| `clojure` | Your server evaluates Clojure, or a dialect close enough that the code Clojure clients send (e.g. `ns` forms) runs. | `cider.eval` |
 
 ## Snippets
 
@@ -119,7 +120,7 @@ snippet is missing, all the checks that need it are skipped.
 
 | Snippet | Options | What it should do | Checks that use it |
 |---|---|---|---|
-| `value` | `code`, `value` | evaluate to `value` | `eval.value`, `eval.survives-error`, `eval.ns`, `eval.unknown-ns`, `session.ephemeral`, `session.unknown`, `session.closed` |
+| `value` | `code`, `value` | evaluate to `value` | `eval.value`, `eval.survives-error`, `eval.ns`, `eval.unknown-ns`, `session.ephemeral`, `session.unknown`, `session.closed`, `cider.eval`, `cider.repl` |
 | `stdout` | `code`, `out` | print `out` to the standard output | `eval.stdout`, `eval.stdout-order` |
 | `stderr` | `code`, `err` | print `err` to the standard error | `eval.stderr` |
 | `throw` | `code` | raise an error | `eval.error-status`, `eval.error-report`, `eval.survives-error` |

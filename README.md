@@ -73,6 +73,10 @@ server (or that users will lose data). If your server simply does
 something differently from the reference nREPL implementation, you'll
 get a warning instead.
 
+Some of the checks send what a particular client sends, the way it sends
+it, e.g. `cider.connect` sends the requests CIDER sends while connecting. That way
+the report tells you directly whether CIDER will work with your server.
+
 ## Checking Clients
 
 If you're working on a client, `proof proxy` can sit between it and a
@@ -123,16 +127,17 @@ the replies). `-like jank` turns on all of jank's scenarios at once, and
 
 proof is still in its early days. Right now it covers the core of the
 protocol (`describe`, unknown ops, `eval`, sessions, `stdin` and the wire format),
-along with the requests clients send and the server differences clients
-have to deal with, and `proof list` will show you all the checks.
+what CIDER sends while connecting and evaluating code, the requests
+clients send and the server differences clients have to deal with, and
+`proof list` will show you all the checks.
 
 Here's what's coming next:
 
 - checks for `interrupt`, `load-file`, `completions` and `lookup`
 - robustness checks (malformed messages, fields of the wrong type,
   clients disconnecting in the middle of an evaluation)
-- replaying what real clients send (e.g. when CIDER or Calva connect to a
-  server) as client profiles
+- client profiles for more clients (e.g. Calva, Conjure and
+  vim-fireplace)
 - publishing the compatibility matrix somewhere nicer than a CI job
   summary
 

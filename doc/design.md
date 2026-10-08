@@ -116,6 +116,24 @@ This split keeps the regular checks simple. A check doesn't have to
 verify that every response has the right `id`, for instance, as the wire
 checks take care of that for all of them.
 
+## Client Profiles
+
+The checks above ask each question in the simplest way possible, which
+doesn't tell you much about the requests real clients send. CIDER, for
+instance, sends the file, line and column of the code it evaluates,
+along with a bunch of options for printing the result (one of them a
+nested dict, another an empty list). A server that can't handle any of
+those breaks CIDER, even if it passes every other check.
+
+Client profiles fill that gap. A client profile says what one client
+sends in a few situations (e.g. while connecting) and what the client
+needs from each reply, along with a link to the client code that needs
+it. Each situation becomes a check that sends those requests, the way
+the client sends them, and fails at the first reply the client couldn't
+use. Replies that only bother the client (e.g. an error the client just
+shows to the user) get a note. Right now there's a profile for CIDER,
+built from what CIDER sends with its default settings.
+
 ## Strict About the Wire, Relaxed About the Rest
 
 proof has its own bencode implementation, as the popular Go libraries
@@ -236,7 +254,7 @@ Here's how the codebase is organized:
 ```
 cmd/proof            the command-line interface
 internal/report      text and JSON reports, the compatibility matrix
-internal/checks      the checks, the wire checks, the client rules and a fake server for testing them
+internal/checks      the checks, the wire checks, the client rules, the client profiles and a fake server for testing them
 internal/proxy       forwarding the traffic between a client and a server
 internal/serve       a server for client tests, which acts like other servers on request
 internal/clients     accepting clients and recording what they say, for proxy and serve
@@ -289,10 +307,9 @@ what's planned next:
   support them)
 - robustness checks (malformed messages, fields of the wrong type, clients
   disconnecting in the middle of an evaluation)
-- client profiles that replay what specific clients send (e.g. when CIDER
-  or Calva connect to a server), so a report can tell you
-  directly whether CIDER will work with your server (`proof proxy`
-  already sees this traffic, it just doesn't save it yet)
+- client profiles for more clients (e.g. Calva, Conjure and
+  vim-fireplace), and a way to record them with `proof proxy`, which
+  already sees the traffic but doesn't save it yet
 - more servers in the compatibility matrix and a proper home for the
   matrix itself
 - incorporating [Spec Changes](spec-changes.md) into the spec, so that

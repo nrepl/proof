@@ -10,5 +10,6 @@ func All() []*check.Check {
 	all = append(all, sessionChecks()...)
 	all = append(all, evalChecks()...)
 	all = append(all, stdinChecks()...)
+	all = append(all, clientProfileChecks()...)
 	return all
 }

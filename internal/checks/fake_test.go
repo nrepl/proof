@@ -50,6 +50,7 @@ type quirks struct {
 	needInputDone    bool // need-input comes with done
 	eofError         bool // an empty stdin fails the read
 	dropStdin        bool // stdin input never reaches the read
+	flatFields       bool // a request with a dict or list in it kills the connection
 }
 
 type fakeSession struct {
@@ -67,6 +68,8 @@ type fakeServer struct {
 	sessions map[string]*fakeSession
 	nextID   int
 	shared   *fakeSession
+	// namespaces are user and the ones ns forms created.
+	namespaces map[string]bool
 }
 
 func startFake(t *testing.T, q quirks) string {
@@ -75,7 +78,7 @@ func startFake(t *testing.T, q quirks) string {
 	if err != nil {
 		t.Fatal(err)
 	}
-	s := &fakeServer{q: q, ln: ln, sessions: map[string]*fakeSession{}, shared: newFakeSession()}
+	s := &fakeServer{q: q, ln: ln, sessions: map[string]*fakeSession{}, shared: newFakeSession(), namespaces: map[string]bool{"user": true}}
 	t.Cleanup(func() { ln.Close() })
 	go func() {
 		for {
@@ -161,6 +164,14 @@ func (s *fakeServer) session(req nrepl.Message, local map[string]bool) (*fakeSes
 func (s *fakeServer) handle(c net.Conn, req nrepl.Message, local map[string]bool) bool {
 	q := s.q
 	done := []any{"done"}
+	if q.flatFields {
+		for _, v := range req {
+			switch v.(type) {
+			case map[string]any, []any:
+				return false
+			}
+		}
+	}
 	switch op := req.Str("op"); op {
 	case "describe":
 		if q.crashOnDescribe {
@@ -193,8 +204,13 @@ func (s *fakeServer) handle(c net.Conn, req nrepl.Message, local map[string]bool
 		}
 		if q.unsortedKeys {
 			// Hand-encoded with "status" before "id".
+			var session string
+			if sess := req.Str("session"); sess != "" {
+				session = "7:session" + strconv.Itoa(len(sess)) + ":" + sess
+			}
 			c.Write([]byte("d6:statusl4:donee2:id" + strconv.Itoa(len(req.Str("id"))) + ":" + req.Str("id") +
-				"3:opsd8:describede4:evalde5:clonede5:closede5:stdindee8:versionsd4:faked14:version-string3:1.0eee"))
+				"3:opsd8:describede4:evalde5:clonede5:closede5:stdindee" + session +
+				"8:versionsd4:faked14:version-string3:1.0eee"))
 			return true
 		}
 		s.send(c, req, fields)
@@ -282,7 +298,13 @@ func (s *fakeServer) eval(c net.Conn, req nrepl.Message, local map[string]bool) 
 		s.send(c, req, map[string]any{"status": status})
 		return
 	}
-	if ns := req.Str("ns"); ns != "" && ns != "user" && !q.nsFallback {
+	s.mu.Lock()
+	if name, ok := strings.CutPrefix(code, "(ns "); ok {
+		s.namespaces[strings.TrimRight(name, ") \n")] = true
+	}
+	known := s.namespaces[req.Str("ns")]
+	s.mu.Unlock()
+	if ns := req.Str("ns"); ns != "" && !known && !q.nsFallback {
 		s.send(c, req, map[string]any{"status": []any{"error", "namespace-not-found", "done"}})
 		return
 	}
