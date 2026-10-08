@@ -134,6 +134,10 @@ use. Replies that only bother the client (e.g. an error the client just
 shows to the user) get a note. Right now there's a profile for CIDER,
 built from what CIDER sends with its default settings.
 
+A new profile starts with a recording, as `proof proxy -record` saves
+what a client sent as a profile with a check for each connection. What
+the client needs from the replies comes from reading its code.
+
 ## Strict About the Wire, Relaxed About the Rest
 
 proof has its own bencode implementation, as the popular Go libraries
@@ -308,8 +312,7 @@ what's planned next:
 - robustness checks (malformed messages, fields of the wrong type, clients
   disconnecting in the middle of an evaluation)
 - client profiles for more clients (e.g. Calva, Conjure and
-  vim-fireplace), and a way to record them with `proof proxy`, which
-  already sees the traffic but doesn't save it yet
+  vim-fireplace)
 - more servers in the compatibility matrix and a proper home for the
   matrix itself
 - incorporating [Spec Changes](spec-changes.md) into the spec, so that

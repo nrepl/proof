@@ -3,6 +3,7 @@ package checks
 import (
 	"embed"
 	"fmt"
+	"io/fs"
 	"slices"
 	"strings"
 	"sync"
@@ -41,8 +42,8 @@ type clientCheck struct {
 // clientStep is a request and what the client needs from its reply,
 // besides done.
 type clientStep struct {
-	// Send is the request. A string starting with $ stands for the
-	// session an earlier step got.
+	// Send is the request. A session starting with $ stands for the one
+	// an earlier step got.
 	Send request `toml:"send"`
 	// Snippet names a snippet of the server's profile whose code goes in
 	// the request, and whose value the reply has to have. It stands for
@@ -81,18 +82,26 @@ var clientProfiles = sync.OnceValue(func() []clientProfile {
 	}
 	var profiles []clientProfile
 	for _, f := range files {
-		var p clientProfile
-		md, err := toml.DecodeFS(clientFiles, "clients/"+f.Name(), &p)
+		p, err := readClientProfile(clientFiles, "clients/"+f.Name())
 		if err != nil {
-			panic(fmt.Sprintf("client profile %s: %v", f.Name(), err))
-		}
-		if undecoded := md.Undecoded(); len(undecoded) > 0 {
-			panic(fmt.Sprintf("client profile %s: unknown keys %v", f.Name(), undecoded))
+			panic(err)
 		}
 		profiles = append(profiles, p)
 	}
 	return profiles
 })
+
+func readClientProfile(fsys fs.FS, path string) (clientProfile, error) {
+	var p clientProfile
+	md, err := toml.DecodeFS(fsys, path, &p)
+	if err != nil {
+		return p, fmt.Errorf("client profile %s: %v", path, err)
+	}
+	if undecoded := md.Undecoded(); len(undecoded) > 0 {
+		return p, fmt.Errorf("client profile %s: unknown keys %v", path, undecoded)
+	}
+	return p, nil
+}
 
 func clientProfileChecks() []*check.Check {
 	var checks []*check.Check
@@ -127,10 +136,10 @@ func (c clientCheck) replay(t *check.T) {
 	for i, s := range c.Steps {
 		req := nrepl.Message{}
 		for k, v := range s.Send {
-			if name, ok := v.(string); ok && strings.HasPrefix(name, "$") {
-				v = sessions[name[1:]]
-			}
 			req[k] = v
+		}
+		if name, ok := req["session"].(string); ok && strings.HasPrefix(name, "$") {
+			req["session"] = sessions[name[1:]]
 		}
 		var want string
 		if s.Snippet != "" {

@@ -277,6 +277,7 @@ Here are the options supported by `proof proxy`:
 | `-listen host:port` | Accept the client on this address. The default is `127.0.0.1:0`, which picks a free port. |
 | `-v` | Show every message exchanged between the client and the server. |
 | `-json file` | Write a JSON report as well. |
+| `-record file` | Write the requests the client sent to a file, as the start of a [client profile](hacking.md#adding-a-client-profile). |
 
 The exit codes are the same as for `proof run`, except that 1 means that
 the client failed some checks and 3 means that no client sent anything.
@@ -397,7 +398,7 @@ all you need for checking output, values, errors, input and interrupts.
 
 When you stop it, `proof serve` checks the requests your client sent,
 just like `proof proxy` does, with the same report, exit codes and
-`-listen`, `-json` and `-v` options. A test suite can run it in CI like
+`-listen`, `-json`, `-record` and `-v` options. A test suite can run it in CI like
 this:
 
 ```shell
