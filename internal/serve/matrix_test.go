@@ -59,6 +59,7 @@ func TestScenariosGetTheVerdictsOfTheirServers(t *testing.T) {
 		{[]string{"no-close-op"}, map[string]check.Verdict{"describe.required-ops": F}},
 		{[]string{"no-interrupt"}, nil},
 		{[]string{"no-stdin"}, noStdin},
+		{[]string{"read-line-throws"}, noStdin},
 		{[]string{"string-versions"}, nil},
 		{[]string{"no-session-closed"}, map[string]check.Verdict{"session.close": F}},
 		{[]string{"shared-state"}, map[string]check.Verdict{"session.isolated": F}},
@@ -78,7 +79,7 @@ func TestScenariosGetTheVerdictsOfTheirServers(t *testing.T) {
 				"session.close": F, "session.unknown": F, "session.closed": F, "eval.stderr": F,
 				"eval.multiple-forms": F, "eval.unknown-ns": F, "stdin.need-input": S, "stdin.roundtrip": S, "stdin.eof": S}},
 		{[]string{"no-close-op", "no-op-echo", "socket-sessions", "shared-state", "no-session-closed", "any-session",
-			"last-value", "ns-fallback", "no-stdin", "no-interrupt", "unsorted-keys", "empty-messages", "error-with-done"}, // jank
+			"last-value", "ns-fallback", "read-line-throws", "no-interrupt", "unsorted-keys", "empty-messages", "error-with-done"}, // jank
 			map[string]check.Verdict{"describe.required-ops": F, "op.unknown-echo": W, "session.across-connections": W,
 				"session.isolated": F, "session.close": F, "session.unknown": F, "session.closed": F,
 				"eval.multiple-forms": F, "eval.unknown-ns": F, "stdin.need-input": S, "stdin.roundtrip": S,

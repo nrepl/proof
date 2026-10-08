@@ -20,11 +20,24 @@ type Scenario struct {
 // behavior is the set of scenarios a server runs with.
 type behavior struct {
 	splitOutput, emptyMessages, lastValue, noErr, errorWithDone bool
-	noOpEcho, noCloseOp, noInterrupt, noStdin, stringVersions   bool
+	noOpEcho, noCloseOp, noInterrupt, stringVersions            bool
 	noSessionClosed, sharedState, socketSessions, anySession    bool
 	nsFallback, nsError, eofError                               bool
 	unsortedKeys, byteWrites, batchedWrites, hangUp             bool
+	stdin                                                       stdinMode
 }
+
+// stdinMode is what reading input does.
+type stdinMode int
+
+const (
+	// askForInput is what nREPL does: ask with need-input, then read what
+	// the stdin op sends.
+	askForInput stdinMode = iota
+	// The other two are for servers without a stdin op.
+	endOfInput
+	throwOnRead
+)
 
 // scenario is a Scenario and the behavior it sets.
 type scenario struct {
@@ -48,11 +61,15 @@ var catalog = []scenario{
 		func(b *behavior) { b.noOpEcho = true }},
 	{Scenario{"no-close-op", "describe doesn't list close, even though close works", "jank"},
 		func(b *behavior) { b.noCloseOp = true }},
-	{Scenario{"no-interrupt", "There's no interrupt op", "Basilisp, jank"},
+	{Scenario{"no-interrupt", "There's no interrupt op", "ClojureCLR, Basilisp, jank"},
 		func(b *behavior) { b.noInterrupt = true }},
-	{Scenario{"no-stdin", "There's no stdin op, and reading input gets an empty string right away", "Basilisp"},
-		func(b *behavior) { b.noStdin = true }},
-	{Scenario{"string-versions", "versions.proof is a plain string rather than a dict", "Babashka, for versions.babashka"},
+	{Scenario{"no-stdin", "There's no stdin op, and reading input gets nil right away",
+		"ClojureCLR and Basilisp started in the background, as they read their own stdin, where Basilisp gets an empty string"},
+		func(b *behavior) { b.stdin = endOfInput }},
+	{Scenario{"read-line-throws", "There's no stdin op, and reading input throws", "jank"},
+		func(b *behavior) { b.stdin = throwOnRead }},
+	{Scenario{"string-versions", "versions.proof is a plain string rather than a dict",
+		"Babashka for versions.babashka, ClojureCLR for versions.clojure.tools.nrepl"},
 		func(b *behavior) { b.stringVersions = true }},
 	{Scenario{"no-session-closed", "close replies with done alone, without session-closed", "Basilisp, jank, dialtone, repartee"},
 		func(b *behavior) { b.noSessionClosed = true }},
@@ -88,7 +105,7 @@ func Scenarios() []Scenario {
 }
 
 // conflicts are scenarios that can't be combined.
-var conflicts = [][2]string{{"ns-fallback", "ns-error"}, {"byte-writes", "batched-writes"}}
+var conflicts = [][2]string{{"ns-fallback", "ns-error"}, {"byte-writes", "batched-writes"}, {"no-stdin", "read-line-throws"}}
 
 func behave(names []string) (behavior, error) {
 	var b behavior
