@@ -3,7 +3,10 @@ package checks
 import (
 	"errors"
 	"fmt"
+	"slices"
 	"strconv"
+	"strings"
+	"unicode"
 	"unicode/utf8"
 
 	"github.com/nrepl/proof/bencode"
@@ -183,7 +186,10 @@ func WireRules() []*check.Rule {
 				if !r.AfterError {
 					return
 				}
-				if k := firstKeyNotIn(r.Msg, afterErrorKeys); k != "" {
+				// nREPL goes on with the next form after one throws, and
+				// REPLy sends one form at a time. Only Clojure code can be
+				// told apart into forms, though.
+				if k := firstKeyNotIn(r.Msg, afterErrorKeys); k != "" && !severalForms(r.Req.Str("code")) {
 					report(k+" arrived after an error status", r.Msg.String())
 				}
 			}),
@@ -371,4 +377,63 @@ func excerpt(raw []byte) string {
 		return strconv.Quote(string(raw[:max])) + "..."
 	}
 	return strconv.Quote(string(raw))
+}
+
+// severalForms says whether code is more than one Clojure form, each in
+// brackets, like the code clients send when they connect.
+func severalForms(code string) bool {
+	fs := forms(code)
+	return len(fs) > 1 && !slices.ContainsFunc(fs, func(f string) bool { return !strings.ContainsAny(f[:1], "([{") })
+}
+
+// forms splits Clojure code into its top-level forms (e.g.
+// `(System/getProperty "user.dir")`), leaving out comments.
+func forms(code string) []string {
+	var forms []string
+	var form strings.Builder
+	end := func() {
+		if form.Len() > 0 {
+			forms = append(forms, form.String())
+			form.Reset()
+		}
+	}
+	depth, inString, escaped, inComment := 0, false, false, false
+	for _, r := range code {
+		switch {
+		case inComment:
+			inComment = r != '\n'
+			continue
+		case escaped:
+			escaped = false
+		case inString:
+			escaped = r == '\\'
+			inString = r != '"'
+		case r == '\\':
+			// A character, e.g. \(
+			escaped = true
+		case r == '"':
+			inString = true
+		case r == ';':
+			inComment = true
+			if depth == 0 {
+				end()
+			}
+			continue
+		case strings.ContainsRune("([{", r):
+			depth++
+		case strings.ContainsRune(")]}", r):
+			depth--
+			if depth == 0 {
+				form.WriteRune(r)
+				end()
+				continue
+			}
+		case (unicode.IsSpace(r) || r == ',') && depth == 0:
+			end()
+			continue
+		}
+		form.WriteRune(r)
+	}
+	end()
+	return forms
 }

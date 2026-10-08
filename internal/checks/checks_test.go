@@ -1,6 +1,7 @@
 package checks
 
 import (
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -8,6 +9,7 @@ import (
 	"github.com/nrepl/proof/internal/check"
 	"github.com/nrepl/proof/internal/check/checktest"
 	"github.com/nrepl/proof/internal/profile"
+	"github.com/nrepl/proof/nrepl"
 )
 
 // The fake server understands these made-up forms; see fakeServer.eval.
@@ -129,6 +131,42 @@ func TestBrokenCloneSkipsSessionChecksQuickly(t *testing.T) {
 	for _, id := range []string{"session.ephemeral", "session.unknown", "describe.reply"} {
 		if v := results[id].Verdict; v != check.Pass {
 			t.Errorf("%s doesn't need clone and should pass, got %s", id, v)
+		}
+	}
+}
+
+// nREPL goes on with the next form after one throws, so what the next form
+// sends isn't late.
+func TestOnlyTheFormThatThrewIsOver(t *testing.T) {
+	// Only Clojure code can be told apart into forms.
+	for code, want := range map[string]check.Verdict{`(/ 1 0) (println "proof")`: check.Pass, "(/ 1 0)": check.Failed,
+		`raise "proof"`: check.Failed} {
+		events := []nrepl.Event{
+			{Dir: nrepl.Sent, Msg: nrepl.Message{"id": "1", "op": "eval", "code": code}},
+			{Dir: nrepl.Received, Msg: nrepl.Message{"id": "1", "status": []any{"eval-error"}}},
+			{Dir: nrepl.Received, Msg: nrepl.Message{"id": "1", "out": "proof"}},
+			{Dir: nrepl.Received, Msg: nrepl.Message{"id": "1", "status": []any{"done"}}},
+		}
+		results := checktest.ByID(check.Grade(WireRules(), []check.Traffic{{Label: "test", Events: events}}))
+		if got := results["wire.error-terminal"].Verdict; got != want {
+			t.Errorf("%q: got %s, want %s", code, got, want)
+		}
+	}
+}
+
+func TestForms(t *testing.T) {
+	cases := map[string][]string{
+		"value":                       {"value"},
+		"1 2\n":                       {"1", "2"},
+		`(f "a ) b" [1 2]) {:a 1}`:    {`(f "a ) b" [1 2])`, "{:a 1}"},
+		`(str "\"" ")") x`:            {`(str "\"" ")")`, "x"},
+		"1, 2 ; (3 \"\n4":             {"1", "2", "4"},
+		`(= c \() (a)(b) x;c` + "\ny": {`(= c \()`, "(a)", "(b)", "x", "y"},
+		"":                            nil,
+	}
+	for code, want := range cases {
+		if got := forms(code); !slices.Equal(got, want) {
+			t.Errorf("forms(%q) = %q, want %q", code, got, want)
 		}
 	}
 }
