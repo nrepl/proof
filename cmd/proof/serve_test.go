@@ -19,6 +19,14 @@ func TestServeExitCodes(t *testing.T) {
 		{"request without an id", nil, []string{"d2:op8:describee"}, 1, "a request without an id"},
 		{"no client", nil, nil, 3, "nothing to check"},
 		{"unknown scenario", []string{"no-such-scenario"}, nil, 2, `unknown scenario "no-such-scenario"`},
+		{"like a server", []string{"-like", "jank", "byte-writes"}, []string{"d2:id1:12:op8:describee"}, 0,
+			"client traffic to proof serve (like jank, byte-writes)"},
+		{"like an unknown server", []string{"-like", "no-such-server"}, nil, 2, `can't behave like "no-such-server"`},
+		{"like a server, by its profile", []string{"-like", "profiles/jank.toml"}, []string{"d2:id1:12:op8:describee"}, 0,
+			"client traffic to proof serve (like jank)"},
+		{"like a server, but not quite", []string{"-like", "jank", "ns-error"}, nil, 2,
+			"scenarios ns-fallback and ns-error don't go together"},
+		{"flag after the scenarios", []string{"byte-writes", "-like", "jank"}, nil, 2, "-like comes after a scenario, but flags have to go first"},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {

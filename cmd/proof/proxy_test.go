@@ -142,7 +142,7 @@ func TestProxyNeedsAServer(t *testing.T) {
 func TestListShowsEverything(t *testing.T) {
 	var buf bytes.Buffer
 	list(&buf)
-	for _, want := range []string{"eval.value", "wire.dict", "client.need-input", "split-output"} {
+	for _, want := range []string{"eval.value", "wire.dict", "client.need-input", "split-output", "clojure-clr"} {
 		if !strings.Contains(buf.String(), want) {
 			t.Errorf("list is missing %s:\n%s", want, buf.String())
 		}

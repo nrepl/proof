@@ -234,12 +234,16 @@ be something a real server does, and `Who` says which ones. To find out
 exactly what a server sends, connect to it and print the replies, the
 same way you would for a client rule.
 
-If the scenario changes the verdict of some check, add it to the table in
-`TestScenariosGetTheVerdictsOfTheirServers` (in `matrix_test.go`) with
-the verdicts its servers get in the matrix, and to the columns of those
-servers further down. Otherwise make sure it does what it says in
-`TestScenarioShapes` (in `serve_test.go`). The tables in `doc/usage.md`
-list all the scenarios as well.
+List the profiles of the servers that do it as well, so `-like` turns it
+on for them. A test makes sure `Who` names them.
+
+If the scenario changes the verdict of some check, add it to the table
+in `TestScenariosGetTheVerdictsOfTheirServers` (in `matrix_test.go`)
+with the verdicts its servers get in the matrix, and update the columns
+of those servers in `TestPresetsGetTheColumnsOfTheirServers`. Otherwise
+make sure it does what it says in `TestScenarioShapes` (in
+`serve_test.go`). The tables in `doc/usage.md` list all the scenarios as
+well.
 
 ## Adding a Server
 
@@ -256,6 +260,11 @@ To add a server to the compatibility matrix:
    same way a user would.
 4. Add it to the lists of profiles in the [README](../README.md) and in
    [Usage](usage.md).
+5. Add it to `servers` in `internal/serve/scenarios.go`, and its profile
+   to the scenarios that cover how it differs from nREPL, so that
+   `proof serve -like` can behave like it. Add its column to
+   `TestPresetsGetTheColumnsOfTheirServers` too. If it does something no
+   scenario covers yet, see [Adding a Scenario](#adding-a-scenario).
 
 ## Links to Client Code
 
