@@ -89,6 +89,16 @@ eval
          see: nrepl/nrepl#147 https://github.com/nrepl/nrepl/issues/147
 ```
 
+The checks in the `cider` group send what CIDER sends while connecting,
+evaluating code from a source buffer and evaluating code in its REPL,
+with all the extra fields CIDER puts in its requests. If one of them
+fails, CIDER won't work properly with your server, and the report says
+what CIDER does with the reply it got (e.g. "CIDER gives up
+connecting"). The code they evaluate for the user is the `value`
+snippet of your profile. Before evaluating code from a source buffer,
+CIDER evaluates the buffer's `ns` form, so `cider.eval` also needs the
+`clojure` capability.
+
 Each check gets one of the following verdicts:
 
 | Verdict | Meaning |
