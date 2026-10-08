@@ -41,10 +41,8 @@ func TestClientProfiles(t *testing.T) {
 				if (s.NewSession != "" || s.Snippet != "" || len(s.Dicts) > 0) && s.Why == "" {
 					t.Errorf("%s step %d: doesn't say what happens to the client without what it needs", c.ID, i+1)
 				}
-				for _, v := range s.Send {
-					if name, ok := v.(string); ok && strings.HasPrefix(name, "$") && !sessions[name[1:]] {
-						t.Errorf("%s step %d: uses %s before a step gets it", c.ID, i+1, name)
-					}
+				if name, ok := s.Send["session"].(string); ok && strings.HasPrefix(name, "$") && !sessions[name[1:]] {
+					t.Errorf("%s step %d: uses %s before a step gets it", c.ID, i+1, name)
 				}
 				if s.NewSession != "" {
 					sessions[s.NewSession] = true

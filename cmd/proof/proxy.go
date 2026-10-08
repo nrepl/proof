@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -23,12 +24,14 @@ import (
 type clientOptions struct {
 	listen  string
 	json    string
+	record  string
 	verbose bool
 }
 
 func (o *clientOptions) register(fs *flag.FlagSet) {
 	fs.StringVar(&o.listen, "listen", "127.0.0.1:0", "accept clients on `host:port` (port 0 picks a free one)")
 	fs.StringVar(&o.json, "json", "", "also write a JSON report to `file`")
+	fs.StringVar(&o.record, "record", "", "also write the requests the client sent to `file`, as the start of a client profile")
 	fs.BoolVar(&o.verbose, "v", false, "show every message the client and the server exchanged")
 }
 
@@ -143,11 +146,18 @@ func gradeClients(stdout, stderr io.Writer, r report.Run, traffic []check.Traffi
 		}
 	}
 	showDeath(stdout, srv)
+	// A recording can't be made again, so it's written even when the
+	// report can't be.
+	var errs []error
 	if o.json != "" {
-		if err := writeJSON(o.json, r); err != nil {
-			fmt.Fprintln(stderr, "proof:", err)
-			return 2
-		}
+		errs = append(errs, writeJSON(o.json, r))
+	}
+	if o.record != "" {
+		errs = append(errs, os.WriteFile(o.record, []byte(checks.RecordedProfile(traffic)), 0o666))
+	}
+	if err := errors.Join(errs...); err != nil {
+		fmt.Fprintln(stderr, "proof:", err)
+		return 2
 	}
 	if r.Counts()[check.Failed] > 0 {
 		return 1

@@ -261,9 +261,14 @@ like the links in `refs.go`). A check that sends code in some language
 should list the capability for it in `needs`, unless the client sends
 that code to any server (like CIDER's startup code).
 
-To find out what a client sends, run it through `proof proxy` with `-v`,
-which shows every request. Then read the client's code to see what it
-does with each reply, and keep only what the client really needs.
+To find out what a client sends, run it through `proof proxy -record
+client.toml`. That gives you a profile with a check for each connection,
+whose steps send what the client sent (and `-v` shows the replies as
+well). Then read the client's code to see what it does with each reply,
+keep only the steps the client really needs and fill in the rest. Keep
+in mind that each step waits for its reply before the next one goes out,
+so requests sent while another one is still running (e.g. `stdin` and
+`interrupt`) won't work in a profile.
 `TestClientProfiles` makes sure a profile hangs together, and the fake
 server should get a quirk for anything a profile catches that the other
 checks don't.

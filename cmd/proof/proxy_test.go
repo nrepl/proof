@@ -132,6 +132,24 @@ func TestProxyWritesJSONAndTranscripts(t *testing.T) {
 	}
 }
 
+// The recording is written even when the report can't be, as the client
+// would have to do it all again.
+func TestProxyRecordsTheClient(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "client.toml")
+	code, stdout, stderr := proxyRun(t, []string{"d2:id1:12:op8:describee"}, "-record", path, "-json", filepath.Join(dir, "missing", "client.json"))
+	if code != 2 || !strings.Contains(stderr, "missing") {
+		t.Errorf("exit status %d, want 2 with the JSON report's error:\n%s%s", code, stdout, stderr)
+	}
+	b, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(b), `send = { op = "describe" }`) {
+		t.Errorf("the recording doesn't have the request:\n%s", b)
+	}
+}
+
 func TestProxyNeedsAServer(t *testing.T) {
 	var stderr bytes.Buffer
 	if code := proxyUntil(context.Background(), nil, io.Discard, &stderr, nil); code != 2 {
