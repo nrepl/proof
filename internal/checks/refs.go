@@ -31,8 +31,9 @@ func issue(repo string, n int) check.Ref {
 var (
 	ciderOpSupported   = ref("CIDER nrepl-op-supported-p", ciderBase+"nrepl-client.el#L233-L237")
 	ciderClone         = ref("CIDER clones a main and a tooling session on connect", ciderBase+"nrepl-client.el#L740-L760")
-	ciderPayloadCond   = ref("CIDER reads value/out/err as mutually exclusive", ciderBase+"nrepl-client.el#L875-L887")
+	ciderPayloadCond   = ref("CIDER reads value/out/err as mutually exclusive", ciderBase+"nrepl-client.el#L875-L888")
 	ciderEvalError     = ref("CIDER eval-error handling", ciderBase+"nrepl-client.el#L898-L899")
+	ciderStderr        = ref("CIDER shows err as error output", ciderBase+"nrepl-client.el#L887-L888")
 	ciderDone          = ref("CIDER completes requests on done", ciderBase+"nrepl-client.el#L900-L902")
 	ciderNsNotFound    = ref("CIDER namespace-not-found handling", ciderBase+"nrepl-client.el#L945")
 	ciderRuntime       = ref("CIDER runtime detection from versions", ciderBase+"cider-session.el#L218-L291")
