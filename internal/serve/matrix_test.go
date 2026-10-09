@@ -107,7 +107,7 @@ func TestPresetsGetTheColumnsOfTheirServers(t *testing.T) {
 	noLanguage := map[string]check.Verdict{"eval.ns": S, "eval.unknown-ns": S, "cider.eval": S, "calva.eval": S,
 		"conjure.eval": S}
 	columns := map[string]map[string]check.Verdict{
-		"clojure":  {"stdin.eof": W},
+		"clojure":  nil,
 		"babashka": nil,
 		"clojure-clr": checktest.Merged(noJava, map[string]check.Verdict{"op.unknown-echo": W, "session.across-connections": W,
 			"session.isolated": F, "session.unknown": F, "session.closed": F, "stdin.need-input": S,
@@ -154,7 +154,7 @@ func TestPresetsMatchTheScenarios(t *testing.T) {
 		// but the profile of nREPL itself is named after Clojure.
 		server, _, _ := strings.Cut(prof.Name, " (")
 		if p.Name == "clojure" {
-			server = "nREPL 1.7.0"
+			server = "nREPL 1.8.0"
 		}
 		for _, s := range Scenarios() {
 			if slices.Contains(p.Scenarios, s.Name) && !strings.Contains(s.Who, server) {

@@ -86,7 +86,7 @@ var catalog = []scenario{
 	{Scenario{"ns-error", "An eval in a namespace that doesn't exist fails without namespace-not-found", "Basilisp"},
 		func(b *behavior) { b.nsError = true }, []string{"basilisp"}},
 	{Scenario{"eof-error", "Reading past the end of input fails instead of returning nil", "nREPL 1.7.0"},
-		func(b *behavior) { b.eofError = true }, []string{"clojure"}},
+		func(b *behavior) { b.eofError = true }, nil},
 	{Scenario{"unsorted-keys", "The keys of reply dicts aren't sorted", "jank"},
 		func(b *behavior) { b.unsortedKeys = true }, []string{"jank"}},
 	{Scenario{"byte-writes", "Replies are written a byte at a time", "any server, as TCP can deliver a message in pieces"},

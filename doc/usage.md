@@ -223,7 +223,7 @@ recording every message on the way:
 
 ```shell
 $ proof proxy -listen 127.0.0.1:7888 profiles/clojure.toml
-Starting Clojure (nrepl/nrepl 1.7.0)...
+Starting Clojure (nrepl/nrepl 1.8.0)...
 Forwarding 127.0.0.1:7888 to localhost:53613. Connect your client to 127.0.0.1:7888 and press Ctrl-C when it's done.
 ```
 
@@ -238,7 +238,7 @@ client
   FAIL   client.need-input            need-input is answered with stdin in the same session
          need-input went unanswered (during connection 1): {id "2", session "dd88...", status ["need-input"]}
          why: Code reading input waits until it gets some, so an unanswered need-input leaves the eval, and the session it runs in, hanging forever.
-         see: nREPL hands stdin to the reader of the request's session https://github.com/nrepl/nrepl/blob/edf294a7.../src/clojure/nrepl/middleware/session.clj#L380-L388
+         see: nREPL hands stdin to the reader of the request's session https://github.com/nrepl/nrepl/blob/16cc5cb0.../src/clojure/nrepl/middleware/session.clj#L386-L394
   WARN   client.close                 Sessions are closed before disconnecting
          a session was never closed (during connection 1): {id "1", new-session "dd88...", session "d5b1...", status ["done"]}
          ...
@@ -373,7 +373,7 @@ hand (e.g. "this eval shows this output and this value") and run them
 once for every scenario.
 
 proof can't evaluate real Clojure, of course. Instead it understands just
-enough of it for tests, and gives the same replies as nREPL 1.7.0 does
+enough of it for tests, and gives the same replies as nREPL 1.8.0 does
 for the same code:
 
 | Code | What it does |
