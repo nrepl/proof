@@ -13,7 +13,7 @@ const (
 	calvaBase     = "https://github.com/BetterThanTomorrow/calva/blob/ad00dd7e518e0d08262810673111eaeddc5c2fdd/src/nrepl/index.ts"
 	conjureBase   = "https://github.com/Olical/conjure/blob/9842bf38464df071f72546f65fa6ec44942ca7b2/fnl/conjure/client/clojure/nrepl/server.fnl"
 	fireplaceBase = "https://github.com/tpope/vim-fireplace/blob/5e66509599de92550762cf2681338fc4cd1e71cf/autoload/"
-	nreplBase     = "https://github.com/nrepl/nrepl/blob/edf294a7739b99549accdb6dbbc2fc83db6d9094/src/clojure/nrepl/"
+	nreplBase     = "https://github.com/nrepl/nrepl/blob/16cc5cb0f2adae44d389ba23c864a02eaa4e71a5/src/clojure/nrepl/"
 	specBase      = "https://github.com/nrepl/spec.nrepl.org/blob/67796e34ac34f2f28c3af685fc3ab432fe5eb03f/spec.md"
 	replyBase     = "https://github.com/trptcolin/reply/blob/2b28587004aa3b5cd5d4548eb87f7674eb999b13/src/reply/eval_modes/nrepl.clj"
 	rebelBase     = "https://github.com/bhauman/rebel-readline/blob/d8573a61aad5cbbd83532e2050b6595cfb5b13bb/rebel-readline-nrepl/src/rebel_readline/nrepl/service/nrepl.clj"
@@ -53,8 +53,8 @@ var (
 	nreplNoCode        = ref("nREPL no-code reply", nreplBase+"middleware/interruptible_eval.clj#L190")
 	nreplNsNotFound    = ref("nREPL namespace-not-found reply", nreplBase+"middleware/interruptible_eval.clj#L197")
 	nreplEvalError     = ref("nREPL eval-error reply", nreplBase+"middleware/interruptible_eval.clj#L118-L123")
-	nreplSessionClosed = ref("nREPL close reply", nreplBase+"middleware/session.clj#L303")
-	nreplUnknownSess   = ref("nREPL unknown-session reply", nreplBase+"middleware/session.clj#L335")
+	nreplSessionClosed = ref("nREPL close reply", nreplBase+"middleware/session.clj#L309")
+	nreplUnknownSess   = ref("nREPL unknown-session reply", nreplBase+"middleware/session.clj#L341")
 	nreplDescribe      = ref("nREPL describe reply", nreplBase+"middleware.clj#L62-L66")
 	specProtocol       = ref("spec: protocol description", specBase+"#L24-L56")
 	specDescribe       = ref("spec: describe op", specBase+"#L62-L93")
@@ -64,14 +64,14 @@ var (
 	specClose          = ref("spec: close op", specBase+"#L390-L414")
 	specStdin          = ref("spec: stdin op", specBase+"#L186-L215")
 	ciderNeedInput     = ref("CIDER need-input handling", ciderBase+"nrepl-client.el#L948-L950")
-	nreplStdinEOF      = ref("nREPL treats an empty stdin as EOF", nreplBase+"middleware/session.clj#L380-L390")
+	nreplStdinEOF      = ref("nREPL treats an empty stdin as EOF", nreplBase+"middleware/session.clj#L386-L396")
 
 	// Server code, for the client rules.
 	nreplReplyID        = ref("nREPL copies the id into replies only if there is one", nreplBase+"misc.clj#L74")
 	nreplConnLoop       = ref("nREPL closes a connection it can't read a request from", nreplBase+"server.clj#L83-L90")
 	nreplSessions       = ref("nREPL keeps sessions (and their threads) until they're closed", nreplBase+"middleware/session.clj#L20-L26")
-	nreplInterruptNoSes = ref("nREPL can't interrupt without a session", nreplBase+"middleware/session.clj#L271-L277")
-	nreplStdinSession   = ref("nREPL hands stdin to the reader of the request's session", nreplBase+"middleware/session.clj#L380-L388")
+	nreplInterruptNoSes = ref("nREPL can't interrupt without a session", nreplBase+"middleware/session.clj#L277-L283")
+	nreplStdinSession   = ref("nREPL hands stdin to the reader of the request's session", nreplBase+"middleware/session.clj#L386-L394")
 	nreplLineColumn     = ref("nREPL casts line and column to int", nreplBase+"middleware/interruptible_eval.clj#L42-L43")
 	nreplEvalNs         = ref("nREPL turns ns into a symbol", nreplBase+"middleware/interruptible_eval.clj#L196")
 	bbUnknownID         = ref("babashka.nrepl replies with id \"unknown\"", bbNreplBase+"impl/utils.clj#L13")

@@ -170,7 +170,7 @@ func compileError(form, format string, args ...any) error {
 		phase: compiling, form: form}
 }
 
-// errorReport is what nREPL 1.7.0 sends about an exception: the text for
+// errorReport is what nREPL 1.8.0 sends about an exception: the text for
 // err, and the classes for ex and root-ex.
 func errorReport(t *thrown, ns string) (text, ex, rootEx string) {
 	class := "class " + t.ex.class

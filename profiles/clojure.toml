@@ -1,9 +1,9 @@
 # The reference implementation, nrepl/nrepl, on the Clojure CLI.
-name = "Clojure (nrepl/nrepl 1.7.0)"
+name = "Clojure (nrepl/nrepl 1.8.0)"
 homepage = "https://github.com/nrepl/nrepl"
 
 [launch]
-command = ["clojure", "-Sdeps", "{:deps {nrepl/nrepl {:mvn/version \"1.7.0\"}}}", "-M", "-m", "nrepl.cmdline", "--port", "0"]
+command = ["clojure", "-Sdeps", "{:deps {nrepl/nrepl {:mvn/version \"1.8.0\"}}}", "-M", "-m", "nrepl.cmdline", "--port", "0"]
 port-pattern = 'nREPL server started on port (\d+)'
 startup-timeout = "120s"
 
