@@ -15,7 +15,7 @@ const (
 	fireplaceBase = "https://github.com/tpope/vim-fireplace/blob/5e66509599de92550762cf2681338fc4cd1e71cf/autoload/"
 	nreplBase     = "https://github.com/nrepl/nrepl/blob/16cc5cb0f2adae44d389ba23c864a02eaa4e71a5/src/clojure/nrepl/"
 	specBase      = "https://github.com/nrepl/spec.nrepl.org/blob/67796e34ac34f2f28c3af685fc3ab432fe5eb03f/spec.md"
-	replyBase     = "https://github.com/trptcolin/reply/blob/2b28587004aa3b5cd5d4548eb87f7674eb999b13/src/reply/eval_modes/nrepl.clj"
+	replyBase     = "https://github.com/trptcolin/reply/blob/2ee3e3a193e9df62d5dc965d25efd0521a289b70/src/clj/reply/eval_modes/nrepl.clj"
 	rebelBase     = "https://github.com/bhauman/rebel-readline/blob/d8573a61aad5cbbd83532e2050b6595cfb5b13bb/rebel-readline-nrepl/src/rebel_readline/nrepl/service/nrepl.clj"
 	bbNreplBase   = "https://github.com/babashka/babashka.nrepl/blob/fb44874128d8cc2622f164e6a499ed4f00e5aae9/src/babashka/nrepl/"
 	basilispBase  = "https://github.com/basilisp-lang/basilisp/blob/2f993f9e53b4195316426140384c38728304341e/src/basilisp/contrib/nrepl_server.lpy"
@@ -47,7 +47,7 @@ var (
 	conjureNsMissing   = ref("Conjure namespace-not-found handling", conjureBase+"#L415-L416")
 	fireplaceClosed    = ref("vim-fireplace session-closed handling", fireplaceBase+"fireplace/transport.vim#L147")
 	fireplaceNsMissing = ref("vim-fireplace namespace-not-found handling", fireplaceBase+"fireplace.vim#L486")
-	replyTerminal      = ref("REPLy stops at error/eval-error", replyBase+"#L57-L66")
+	replyTerminal      = ref("REPLy stops at error/eval-error", replyBase+"#L59-L70")
 	rebelTerminal      = ref("rebel-readline stops at error/eval-error", rebelBase+"#L70-L83")
 	nreplUnknownOp     = ref("nREPL unknown-op reply", nreplBase+"server.clj#L109-L112")
 	nreplNoCode        = ref("nREPL no-code reply", nreplBase+"middleware/interruptible_eval.clj#L190")
