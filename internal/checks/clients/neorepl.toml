@@ -1,0 +1,54 @@
+# What neorepl's REPL sends while it starts and when it evaluates code,
+# with its default settings and without a terminal. In a terminal it also
+# looks things up and completes names as the user types, but it carries
+# on when that fails. The links point at the code that needs what the
+# steps check.
+name = "neorepl"
+code = "https://github.com/nrepl/neorepl/blob/462a182c885ff56d65acfc73ad1fa92f02fc7181/src/neorepl/"
+
+[[checks]]
+id = "neorepl.connect"
+title = "neorepl can start its REPL"
+why = "neorepl asks for describe, clones a session and asks for describe again, in that session, before it shows a prompt, so a server that gets any of it wrong can't be used from neorepl at all."
+
+# The ops tell neorepl what the server can do, e.g. look things up.
+[[checks.steps]]
+send = { op = "describe" }
+dicts = [["ops"], ["versions"]]
+why = "neorepl takes the server for one that isn't running, and says so or starts a server of its own for the project"
+refs = ["nrepl.clj#L153-L168", "discovery.clj#L38-L45"]
+
+[[checks.steps]]
+send = { op = "clone" }
+new-session = "repl"
+why = "neorepl can't start its REPL"
+refs = ["main.clj#L735-L737", "nrepl.clj#L185-L188"]
+
+# For the namespace of the first prompt, which is user when the reply
+# doesn't say.
+[[checks.steps]]
+send = { op = "describe", session = "$repl" }
+why = "neorepl can't start its REPL"
+refs = ["repl.clj#L194", "nrepl.clj#L199"]
+
+[[checks]]
+id = "neorepl.eval"
+title = "neorepl can evaluate code"
+why = "neorepl sends what the user types with options for pretty printing the values, so a server that can't handle them leaves neorepl users without the results of their code."
+
+[[checks.steps]]
+send = { op = "clone" }
+new-session = "repl"
+why = "neorepl can't start its REPL"
+refs = ["main.clj#L735-L737", "nrepl.clj#L185-L188"]
+
+[[checks.steps]]
+snippet = "value"
+why = "users don't see the result of their code"
+refs = ["repl.clj#L16-L24", "repl.clj#L270", "evaluation.clj#L183-L200"]
+
+[checks.steps.send]
+op = "eval"
+session = "$repl"
+"nrepl.middleware.print/print" = "nrepl.util.print/pprint"
+"nrepl.middleware.print/options" = { right-margin = 80 }

@@ -134,8 +134,8 @@ func WireRules() []*check.Rule {
 			ID:       "wire.session-echo",
 			Title:    "Replies to a request with a session carry that session",
 			Severity: check.Fail,
-			Why:      "Calva only hands a reply to a session when it carries that session's id; everything else is dropped.",
-			Refs:     []check.Ref{calvaRouting},
+			Why:      "Calva only hands a reply to a session when it carries that session's id; everything else is dropped. REPLy files replies by their session too, and stops reading replies altogether at one without a session it knows.",
+			Refs:     []check.Ref{calvaRouting, replySessions},
 			Inspect: eachReply(func(r reply, report check.Reporter) {
 				if !r.Req.Has("session") || r.Msg.Str("session") == r.Req.Str("session") {
 					return
