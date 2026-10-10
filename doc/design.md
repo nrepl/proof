@@ -132,8 +132,8 @@ it. Each situation becomes a check that sends those requests, the way
 the client sends them, and fails at the first reply the client couldn't
 use. Replies that only bother the client (e.g. an error the client just
 shows to the user) get a note. Right now there are profiles for CIDER,
-Calva, Conjure and vim-fireplace, built from what they send with their
-default settings.
+Calva, Conjure, vim-fireplace, REPLy and neorepl, built from what they
+send with their default settings.
 
 A new profile starts with a recording, as `proof proxy -record` saves
 what a client sent as a profile with a check for each connection. What

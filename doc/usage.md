@@ -89,16 +89,18 @@ eval
          see: nrepl/nrepl#147 https://github.com/nrepl/nrepl/issues/147
 ```
 
-The checks in the `cider`, `calva`, `conjure` and `fireplace` groups send
-what those clients send while connecting and evaluating code, with all
-the extra fields they put in their requests. If one of them fails, the
-client won't work properly with your server, and the report says what
-the client does with the reply it got (e.g. "CIDER gives up
-connecting"). The code they evaluate for the user is the `value`
-snippet of your profile. Before evaluating code from a source file,
-CIDER, Calva and Conjure evaluate an `ns` form for the file's namespace,
-so those checks also need the `clojure` capability. vim-fireplace finds the classpath
-with Java interop while connecting, so its checks need `java`.
+The checks in the `cider`, `calva`, `conjure`, `fireplace`, `reply` and
+`neorepl` groups send what those clients send while connecting and
+evaluating code, with all the extra fields they put in their requests.
+If one of them fails, the client won't work properly with your server,
+and the report says what the client does with the reply it got (e.g.
+"CIDER gives up connecting"). The code they evaluate for the user is the
+`value` snippet of your profile. (REPLy sends nothing but the code and
+the session, so `eval.value` covers it.) Before evaluating code from a
+source file, CIDER, Calva and Conjure evaluate an `ns` form for the
+file's namespace, so those checks also need the `clojure` capability.
+vim-fireplace finds the classpath with Java interop while connecting, so
+its checks need `java`.
 
 Each check gets one of the following verdicts:
 

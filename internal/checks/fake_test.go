@@ -31,6 +31,7 @@ type quirks struct {
 	noEvalError      bool // failed evals get no eval-error status
 	noEx             bool
 	noNoCode         bool // missing code gets eval-error instead of no-code
+	emptyCodeHangs   bool // an eval of empty code never gets a reply
 	noNs             bool // replies don't carry ns
 	nsFallback       bool // unknown ns silently falls back to user
 	twoDones         bool
@@ -296,6 +297,9 @@ func (s *fakeServer) eval(c net.Conn, req nrepl.Message, local map[string]bool) 
 			status = []any{"eval-error", "done"}
 		}
 		s.send(c, req, map[string]any{"status": status})
+		return
+	}
+	if code == "" && q.emptyCodeHangs {
 		return
 	}
 	s.mu.Lock()

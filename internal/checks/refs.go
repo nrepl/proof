@@ -48,6 +48,7 @@ var (
 	fireplaceClosed    = ref("vim-fireplace session-closed handling", fireplaceBase+"fireplace/transport.vim#L147")
 	fireplaceNsMissing = ref("vim-fireplace namespace-not-found handling", fireplaceBase+"fireplace.vim#L486")
 	replyTerminal      = ref("REPLy stops at error/eval-error", replyBase+"#L59-L70")
+	replySessions      = ref("REPLy files replies by their session", replyBase+"#L184-L201")
 	rebelTerminal      = ref("rebel-readline stops at error/eval-error", rebelBase+"#L70-L83")
 	nreplUnknownOp     = ref("nREPL unknown-op reply", nreplBase+"server.clj#L109-L112")
 	nreplNoCode        = ref("nREPL no-code reply", nreplBase+"middleware/interruptible_eval.clj#L190")

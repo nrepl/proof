@@ -48,8 +48,9 @@ func TestWellBehavedServerPassesEverything(t *testing.T) {
 // other check and rule must still pass.
 func TestChecksCatchMisbehaviour(t *testing.T) {
 	F, W, S := check.Failed, check.Warned, check.Skipped
-	// What every client goes through first.
-	connects := map[string]check.Verdict{"cider.connect": F, "calva.connect": F, "conjure.connect": F, "fireplace.connect": F}
+	// What every client but REPLy goes through first.
+	connects := map[string]check.Verdict{"cider.connect": F, "calva.connect": F, "conjure.connect": F, "fireplace.connect": F,
+		"neorepl.connect": F}
 	cases := []struct {
 		name string
 		q    quirks
@@ -71,7 +72,8 @@ func TestChecksCatchMisbehaviour(t *testing.T) {
 		{"no session-closed", quirks{noSessionClosed: true}, map[string]check.Verdict{"session.close": F}},
 		// Only clients put dicts and lists in their requests.
 		{"flat fields only", quirks{flatFields: true}, map[string]check.Verdict{
-			"cider.connect": F, "cider.eval": F, "cider.repl": F, "calva.connect": F, "calva.eval": F, "conjure.eval": F}},
+			"cider.connect": F, "cider.eval": F, "cider.repl": F, "calva.connect": F, "calva.eval": F, "conjure.eval": F,
+			"neorepl.eval": F}},
 		{"any session accepted", quirks{acceptAnySession: true}, map[string]check.Verdict{"session.unknown": F, "session.closed": F}},
 		{"shared session state", quirks{sharedState: true}, map[string]check.Verdict{"session.isolated": F}},
 		{"sessions tied to sockets", quirks{socketSessions: true}, map[string]check.Verdict{"session.across-connections": W}},
@@ -82,6 +84,8 @@ func TestChecksCatchMisbehaviour(t *testing.T) {
 		{"no eval-error", quirks{noEvalError: true}, map[string]check.Verdict{"eval.error-status": F}},
 		{"no ex", quirks{noEx: true}, map[string]check.Verdict{"eval.error-report": W}},
 		{"no no-code", quirks{noNoCode: true}, map[string]check.Verdict{"eval.no-code": W}},
+		// REPLy evaluates nothing before its first prompt.
+		{"empty code never answered", quirks{emptyCodeHangs: true}, map[string]check.Verdict{"reply.connect": F}},
 		{"no ns", quirks{noNs: true}, map[string]check.Verdict{"eval.ns": W, "fireplace.connect": F}},
 		{"ns fallback", quirks{nsFallback: true}, map[string]check.Verdict{"eval.unknown-ns": F}},
 		{"two dones", quirks{twoDones: true}, map[string]check.Verdict{"wire.one-done": W}},
@@ -93,7 +97,8 @@ func TestChecksCatchMisbehaviour(t *testing.T) {
 			"wire.id": W, "eval.stdout": F, "eval.stderr": F, "eval.error-report": W}},
 		{"integer value", quirks{intValue: true}, map[string]check.Verdict{
 			"wire.field-types": F, "eval.value": F, "eval.survives-error": F, "eval.multiple-forms": F,
-			"session.ephemeral": F, "session.persistent": F, "cider.eval": F, "cider.repl": F, "calva.eval": F, "conjure.eval": F, "fireplace.eval": F}},
+			"session.ephemeral": F, "session.persistent": F, "cider.eval": F, "cider.repl": F, "calva.eval": F, "conjure.eval": F, "fireplace.eval": F,
+			"neorepl.eval": F}},
 		{"unsorted keys", quirks{unsortedKeys: true}, map[string]check.Verdict{"wire.canonical": W}},
 		{"invalid UTF-8", quirks{badUTF8: true}, map[string]check.Verdict{"wire.utf8": W, "eval.stdout": F}},
 		{"no stdin op", quirks{noStdinOp: true}, map[string]check.Verdict{

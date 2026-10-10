@@ -121,7 +121,7 @@ snippet is missing, all the checks that need it are skipped.
 
 | Snippet | Options | What it should do | Checks that use it |
 |---|---|---|---|
-| `value` | `code`, `value` | evaluate to `value` | `eval.value`, `eval.survives-error`, `eval.ns`, `eval.unknown-ns`, `session.ephemeral`, `session.unknown`, `session.closed`, `cider.eval`, `cider.repl`, `calva.eval`, `conjure.eval`, `fireplace.eval` |
+| `value` | `code`, `value` | evaluate to `value` | `eval.value`, `eval.survives-error`, `eval.ns`, `eval.unknown-ns`, `session.ephemeral`, `session.unknown`, `session.closed`, `cider.eval`, `cider.repl`, `calva.eval`, `conjure.eval`, `fireplace.eval`, `neorepl.eval` |
 | `stdout` | `code`, `out` | print `out` to the standard output | `eval.stdout`, `eval.stdout-order` |
 | `stderr` | `code`, `err` | print `err` to the standard error | `eval.stderr` |
 | `throw` | `code` | raise an error | `eval.error-status`, `eval.error-report`, `eval.survives-error` |
