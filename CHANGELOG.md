@@ -32,3 +32,5 @@ Initial release.
   scenarios for nREPL's interrupt bugs in `proof serve`.
 - [#12](https://github.com/nrepl/proof/pull/12): Checks for `load-file`, and
   `load-file` in `proof serve`.
+- [#13](https://github.com/nrepl/proof/pull/13): Checks for completions and
+  lookups, and nREPL's `completions` and `lookup` in `proof serve`.

@@ -101,14 +101,17 @@ lookups and completions, plus requests that go wrong.
 
 ### Lookups and Completions
 
-- Checks for nREPL's `lookup` and `completions` and for cider-nrepl's
-  `info`, `complete` and `eldoc`, for servers that list them in
-  `describe`. nREPL has the former, Basilisp the latter and Babashka
-  both. CIDER asks for cider-nrepl's ops by their `cider/` names, falls
-  back to the old names and then to nREPL's ops, and the checks should
-  do the same.
-- Client profile checks for the completion and documentation requests of
-  CIDER and Calva.
+- Done: checks for nREPL's `completions` and `lookup` and cider-nrepl's
+  `complete`, `info` and `eldoc`, for servers that list them, sending
+  CIDER's `prefix` and `sym` and the `symbol` of Calva, Conjure and
+  vim-fireplace. The checks of `completions` and `lookup` skip on
+  servers that have `complete` and `info`, as clients use those then.
+  Babashka, Basilisp and ClojureCLR don't say `no-info` for a symbol
+  that doesn't exist, Basilisp counts columns from 0 and ClojureCLR's
+  `file` isn't a URI, which Calva needs to jump to a definition.
+- Done: `proof serve` has nREPL's `completions` and `lookup`.
+- Not done: scenarios for cider-nrepl's ops in `proof serve`, so `-like`
+  could act like Babashka, Basilisp and ClojureCLR there too.
 - [spec#9](https://github.com/nrepl/spec.nrepl.org/pull/9) (`arglists-str`
   and `no-info`) should be settled by then.
 

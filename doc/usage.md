@@ -390,6 +390,8 @@ servers. There are a couple of exceptions. No scenario covers
 `eval.no-code`, as clients always send some code, and the code is still
 Clojure, even with `-like dialtone`. So the checks the profiles of
 dialtone and repartee skip for their languages (e.g. `eval.ns`) pass.
+And the completions and lookups of `proof serve` are always nREPL's
+(`completions` and `lookup`), whatever server it acts like.
 
 Most scenarios change only how the replies look on the wire, not what a
 user should end up seeing. Evaluating `(println "hi") (+ 1 2)` should
@@ -428,7 +430,9 @@ gets a read error. That's enough for CIDER, Calva, Conjure and
 vim-fireplace to connect and work, and it's all you need for checking
 output, values, errors, input and interrupts. `load-file` evaluates
 what's in the file the same way, and like nREPL it sends only the value
-of the last form and stops at the first error.
+of the last form and stops at the first error. `completions` and
+`lookup` know the functions in the table above and whatever the code
+defines.
 
 When you stop it, `proof serve` checks the requests your client sent,
 just like `proof proxy` does, with the same report, exit codes and

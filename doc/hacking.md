@@ -134,8 +134,8 @@ Here's what each of its fields means:
 | `Requires` | The checks this check depends on. Everything that creates a session requires `session.clone`, and everything that looks at the response of `describe` requires `describe.reply`. |
 
 Checks are grouped by area in `describe.go`, `op.go`, `session.go`,
-`eval.go`, `stdin.go` and `interrupt.go`, and they run in the order
-listed in `all.go`. If you're adding
+`eval.go`, `stdin.go`, `interrupt.go`, `loadfile.go`, `completion.go`
+and `lookup.go`, and they run in the order listed in `all.go`. If you're adding
 a new area, put its checks in a new file and add them to `all.go`.
 
 In `Run` a check talks to the server via `t`:

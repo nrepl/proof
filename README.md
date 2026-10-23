@@ -131,14 +131,14 @@ the replies). `-like jank` turns on all of jank's scenarios at once, and
 ## Status
 
 proof is still in its early days. Right now it covers the core of the
-protocol (`describe`, unknown ops, `eval`, sessions, `stdin`, `interrupt`, `load-file` and the wire format),
+protocol (`describe`, unknown ops, `eval`, sessions, `stdin`, `interrupt`, `load-file`, completions, lookups and the wire format),
 what CIDER, Calva, Conjure, vim-fireplace, REPLy and neorepl send while
 connecting, evaluating code and loading files, the requests
 clients send and the server differences clients have to deal with, and
 `proof list` will show you all the checks.
 
-Checks for lookups, completions and malformed requests are coming next,
-along with the first release.
+Checks for malformed requests are coming next, along with the first
+release.
 [PLAN.md](PLAN.md) has all the details.
 
 ## Why "proof"?

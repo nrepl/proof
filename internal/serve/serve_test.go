@@ -338,6 +338,35 @@ func TestInterrupt(t *testing.T) {
 	}
 }
 
+// completions and lookup resolve names the way eval does.
+func TestLookups(t *testing.T) {
+	c := connect(t, serveFor(t))
+	session := clone(t, c)
+	eval(t, c, session, "(def inc 1) (ns proof.other) (def x 1) (in-ns 'user)")
+	lookup := func(sym string) any {
+		return request(t, c, nrepl.Message{"op": "lookup", "sym": sym, "session": session}).Get("info")
+	}
+	for sym, want := range map[string]any{
+		"inc":           map[string]any{"name": "inc", "ns": "clojure.core"},
+		"proof.other/x": map[string]any{"name": "x", "ns": "proof.other"},
+		"Thread/sleep":  map[string]any{"name": "sleep", "ns": "Thread"},
+		"if":            map[string]any{"name": "if", "ns": "clojure.core", "special-form": "true"},
+		"x":             []any{},
+	} {
+		if got := lookup(sym); !reflect.DeepEqual(got, want) {
+			t.Errorf("lookup %s: %v, want %v", sym, got, want)
+		}
+	}
+	r := request(t, c, nrepl.Message{"op": "completions", "prefix": "in", "session": session})
+	var names []string
+	for _, cand := range r.Get("completions").([]any) {
+		names = append(names, cand.(map[string]any)["candidate"].(string))
+	}
+	if !slices.Equal(names, []string{"in-ns", "inc"}) {
+		t.Errorf("completions for in: %v", names)
+	}
+}
+
 func TestClosingASessionInterruptsItsEval(t *testing.T) {
 	c := connect(t, serveFor(t))
 	session := clone(t, c)
@@ -407,10 +436,10 @@ func TestDescribe(t *testing.T) {
 		ops       []string
 		version   any
 	}{
-		{nil, []string{"clone", "close", "describe", "eval", "interrupt", "load-file", "stdin"},
+		{nil, []string{"clone", "close", "completions", "describe", "eval", "interrupt", "load-file", "lookup", "stdin"},
 			map[string]any{"major": int64(0), "minor": int64(1), "incremental": int64(0), "version-string": "0.1.0-dev"}},
-		{[]string{"no-close-op", "no-interrupt", "no-stdin", "string-versions"}, []string{"clone", "describe", "eval", "load-file"}, "0.1.0-dev"},
-		{[]string{"read-line-throws"}, []string{"clone", "close", "describe", "eval", "interrupt", "load-file"},
+		{[]string{"no-close-op", "no-interrupt", "no-stdin", "string-versions"}, []string{"clone", "completions", "describe", "eval", "load-file", "lookup"}, "0.1.0-dev"},
+		{[]string{"read-line-throws"}, []string{"clone", "close", "completions", "describe", "eval", "interrupt", "load-file", "lookup"},
 			map[string]any{"major": int64(0), "minor": int64(1), "incremental": int64(0), "version-string": "0.1.0-dev"}},
 	}
 	for _, tc := range cases {

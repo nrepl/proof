@@ -65,6 +65,17 @@ type quirks struct {
 	diesOnInterrupt  bool // an interrupted session never answers again
 	noLoadFileOp     bool // there's no load-file op
 	loadFileNoValue  bool // load-file sends no value
+	nreplLookups     bool // only nREPL's completions and lookup, without cider-nrepl's ops
+	completionsLate  bool // the completions come before the message with done
+	stringCandidates bool // completions are strings rather than dicts
+	completePrefix   bool // complete only takes a prefix, not a symbol
+	emptyLookupInfo  bool // lookup gives an empty dict for a symbol that doesn't exist
+	lineString       bool // the line of a symbol is a string
+	columnZero       bool // info counts columns from 0
+	noNoInfo         bool // info for a symbol that doesn't exist gets a plain done
+	eldocStrings     bool // eldoc's arglists are strings rather than lists
+	pathFile         bool // the file of a symbol is a path rather than a URI
+	ciderPrefixed    bool // cider-nrepl's ops go by their cider/ names only
 }
 
 var unknownSession = map[string]any{"status": []any{"error", "unknown-session", "done"}}
@@ -219,6 +230,13 @@ func (s *fakeServer) handle(c net.Conn, req nrepl.Message, local map[string]bool
 		if !q.noLoadFileOp {
 			names = append(names, "load-file")
 		}
+		names = append(names, "completions", "lookup")
+		switch {
+		case q.ciderPrefixed:
+			names = append(names, "cider/complete", "cider/info", "cider/eldoc")
+		case !q.nreplLookups:
+			names = append(names, "complete", "info", "eldoc")
+		}
 		var ops any
 		if q.opsList {
 			l := []any{}
@@ -244,7 +262,7 @@ func (s *fakeServer) handle(c net.Conn, req nrepl.Message, local map[string]bool
 				session = "7:session" + strconv.Itoa(len(sess)) + ":" + sess
 			}
 			c.Write([]byte("d6:statusl4:donee2:id" + strconv.Itoa(len(req.Str("id"))) + ":" + req.Str("id") +
-				"3:opsd8:describede4:evalde5:clonede5:closede5:stdinde9:interruptde9:load-filedee" + session +
+				"3:opsd8:describede4:evalde5:clonede5:closede5:stdinde9:interruptde9:load-filede11:completionsde6:lookupde8:completede4:infode5:eldocdee" + session +
 				"8:versionsd4:faked14:version-string3:1.0eee"))
 			return true
 		}
@@ -282,10 +300,93 @@ func (s *fakeServer) handle(c net.Conn, req nrepl.Message, local map[string]bool
 		}
 		// Like nREPL, an eval of what's in the file.
 		s.eval(c, req.With(nrepl.Message{"code": req["file"]}), local)
+	case "completions":
+		s.complete(c, req)
+	case "lookup":
+		s.lookUp(c, req)
+	case "complete", "info", "eldoc", "cider/complete", "cider/info", "cider/eldoc":
+		plain := nrepl.Message{"op": strings.TrimPrefix(op, "cider/")}
+		switch {
+		case q.nreplLookups, q.ciderPrefixed != strings.HasPrefix(op, "cider/"):
+			s.unknownOp(c, req)
+		case plain.Str("op") == "complete":
+			s.complete(c, req.With(plain))
+		default:
+			s.lookUp(c, req.With(plain))
+		}
 	default:
 		s.unknownOp(c, req)
 	}
 	return true
+}
+
+// complete offers proof for a prefix of it, like nREPL's completions and
+// cider-nrepl's complete do.
+func (s *fakeServer) complete(c net.Conn, req nrepl.Message) {
+	q := s.q
+	prefix := req.Str("prefix")
+	if req.Str("op") == "complete" && !q.completePrefix && prefix == "" {
+		prefix = req.Str("symbol")
+	}
+	completions := []any{}
+	if prefix != "" && strings.HasPrefix("proof", prefix) {
+		var candidate any = map[string]any{"candidate": "proof", "ns": "user", "type": "function"}
+		if q.stringCandidates {
+			candidate = "proof"
+		}
+		completions = append(completions, candidate)
+	}
+	if q.completionsLate {
+		s.send(c, req, map[string]any{"completions": completions})
+		s.send(c, req, map[string]any{"status": []any{"done"}})
+		return
+	}
+	s.send(c, req, map[string]any{"completions": completions, "status": []any{"done"}})
+}
+
+// lookUp says what proof is, like nREPL's lookup and cider-nrepl's info
+// and eldoc do.
+func (s *fakeServer) lookUp(c net.Conn, req nrepl.Message) {
+	q := s.q
+	op, sym := req.Str("op"), req.Str("sym")
+	if op == "info" && sym == "" {
+		sym = req.Str("symbol")
+	}
+	found := sym == "proof"
+	info := map[string]any{"name": "proof", "ns": "user", "doc": "The proof.", "arglists-str": "([x])",
+		"file": "file:/proof.clj", "line": int64(1), "column": int64(1)}
+	if q.lineString {
+		info["line"] = "1"
+	}
+	if q.columnZero {
+		info["column"] = int64(0)
+	}
+	if q.pathFile {
+		info["file"] = "/proof.clj"
+	}
+	done := []any{"done"}
+	switch {
+	case op == "lookup" && !found && q.emptyLookupInfo:
+		s.send(c, req, map[string]any{"info": map[string]any{}, "status": done})
+	case op == "lookup" && !found:
+		s.send(c, req, map[string]any{"info": []any{}, "status": done})
+	case op == "lookup":
+		s.send(c, req, map[string]any{"info": info, "status": done})
+	case op == "info" && !found && q.noNoInfo:
+		s.send(c, req, map[string]any{"status": done})
+	case !found:
+		s.send(c, req, map[string]any{"status": []any{"done", "no-" + op}})
+	case op == "info":
+		info["status"] = done
+		s.send(c, req, info)
+	default:
+		var arglist any = []any{"x"}
+		if q.eldocStrings {
+			arglist = "[x]"
+		}
+		s.send(c, req, map[string]any{"name": "proof", "ns": "user", "docstring": "The proof.", "type": "function",
+			"eldoc": []any{arglist}, "status": done})
+	}
 }
 
 func (s *fakeServer) unknownOp(c net.Conn, req nrepl.Message) {

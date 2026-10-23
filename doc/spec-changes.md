@@ -252,6 +252,22 @@ checks `lookup-error`), so omitting `info` works for it. Conjure's
 `(or msg.info msg)` returns the whole message. The spec should adopt
 `no-info`.
 
+cider-nrepl's `info` (which the spec doesn't have, but Babashka,
+Basilisp and ClojureCLR do) is a different matter. CIDER treats any
+reply without `no-info` as the info about a symbol it found, so a plain
+`done` for a symbol that doesn't exist breaks its docs and jumping to a
+definition. Babashka, Basilisp and ClojureCLR all do that today.
+
+### Completions and Lookups
+
+The spec has `completions` and `lookup`, but it doesn't say that the
+completions should come in one message along with `done` (Conjure reads
+them from the message with `done`, and Calva from the first message of
+the reply to `complete`), that each candidate is a dict with a
+`candidate`, that `line` and `column` in `info` are integers counting
+from 1 (Conjure moves the cursor to `column - 1`), or that `file` is a
+URI (Calva can't jump to a plain path).
+
 ### `status` is a Set, but Some Clients Compare Lists
 
 `nrepl.cmdline` expects exactly `["done" "session-idle"]` when

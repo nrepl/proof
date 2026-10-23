@@ -46,11 +46,16 @@ func runChecks(t *testing.T, scenarios ...string) map[string]check.Result {
 // capabilities of server's, so the checks for other languages skip.
 func runChecksAs(t *testing.T, server string, scenarios ...string) map[string]check.Result {
 	t.Helper()
+	return runSomeChecksAs(t, server, checks.All(), scenarios...)
+}
+
+func runSomeChecksAs(t *testing.T, server string, cs []*check.Check, scenarios ...string) map[string]check.Result {
+	t.Helper()
 	p := loadProfile(t, "clojure")
 	p.Capabilities = loadProfile(t, server).Capabilities
 	p.Timeout = time.Second
 	env := &check.Env{Profile: p, Addr: serveFor(t, scenarios...).Addr(), Settle: 20 * time.Millisecond}
-	return checktest.ByID(check.Run(env, checks.All(), checks.WireRules()))
+	return checktest.ByID(check.Run(env, cs, checks.WireRules()))
 }
 
 // noInterrupts is what the interrupt checks get from servers without the
@@ -65,8 +70,13 @@ var noInterrupts = func() map[string]check.Verdict {
 	return v
 }()
 
+// proof serve has nREPL's completions and lookup, but not the ops of
+// cider-nrepl that clients prefer.
+var noCiderOps = map[string]check.Verdict{"completion.complete": check.Skipped, "completion.complete-symbol": check.Skipped,
+	"lookup.info": check.Skipped, "lookup.info-unknown": check.Skipped, "lookup.eldoc": check.Skipped}
+
 func TestPassesEveryServerCheck(t *testing.T) {
-	checktest.Verdicts(t, runChecks(t), nil)
+	checktest.Verdicts(t, runChecks(t), noCiderOps)
 }
 
 // A scenario has to do what the servers it names do, so it gets the
@@ -110,14 +120,17 @@ func TestScenariosGetTheVerdictsOfTheirServers(t *testing.T) {
 	for _, c := range cases {
 		t.Run(fmt.Sprint(c.scenarios), func(t *testing.T) {
 			t.Parallel()
-			checktest.Verdicts(t, runChecks(t, c.scenarios...), c.want)
+			checktest.Verdicts(t, runChecks(t, c.scenarios...), checktest.Merged(noCiderOps, c.want))
 		})
 	}
 }
 
 // A server's scenarios together get its column of the compatibility
 // matrix. The columns leave out eval.no-code, as no client sends an eval
-// without code.
+// without code, and the checks of completions and lookups, which are
+// nREPL's in proof serve. That's also why Basilisp's column has no
+// wire.canonical warning, and ClojureCLR's no wire.field-types failure,
+// which their info replies get in the matrix.
 func TestPresetsGetTheColumnsOfTheirServers(t *testing.T) {
 	F, W, S := check.Failed, check.Warned, check.Skipped
 	noJava := map[string]check.Verdict{"fireplace.connect": S, "fireplace.eval": S}
@@ -150,7 +163,12 @@ func TestPresetsGetTheColumnsOfTheirServers(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			checktest.Verdicts(t, runChecksAs(t, name, scenarios...), want)
+			// proof serve's completions and lookups are nREPL's whatever
+			// server it acts like.
+			cs := slices.DeleteFunc(checks.All(), func(c *check.Check) bool {
+				return strings.HasPrefix(c.ID, "completion.") || strings.HasPrefix(c.ID, "lookup.")
+			})
+			checktest.Verdicts(t, runSomeChecksAs(t, name, cs, scenarios...), want)
 		})
 	}
 	for _, p := range Presets() {

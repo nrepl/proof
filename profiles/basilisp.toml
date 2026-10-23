@@ -46,3 +46,12 @@ values = ["1", "2"]
 code = "(read-line)"
 value = '"proof"'
 eof = "nil"
+
+# A prefix, and something it completes to.
+[snippets.completion]
+code = "printl"
+value = "println"
+
+# A function to look up.
+[snippets.lookup]
+code = "println"

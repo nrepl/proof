@@ -65,6 +65,13 @@ eof = "nil"
 code = '(do (print "proof") (flush) (Thread/sleep 60000))'
 out = "proof"
 
+[snippets.completion]
+code = "printl"
+value = "println"
+
+[snippets.lookup]
+code = "println"
+
 [expected-failures]
 "eval.multiple-forms" = "only the last value is returned, see #42"
 ```
@@ -139,6 +146,8 @@ snippet is missing, all the checks that need it are skipped.
 | `multiple` | `code`, `values` | consist of several forms that evaluate to `values` (in order) | `eval.multiple-forms` |
 | `read-line` | `code`, `value`, `eof` | read a line from stdin, evaluating to `value` when the line is `proof` and to `eof` at the end of input | `stdin.need-input`, `stdin.roundtrip`, `stdin.eof` |
 | `sleep` | `code`, `out` | print `out` and then keep running for longer than the `timeout` (e.g. a minute), so there's something to interrupt | all the `interrupt.*` checks |
+| `completion` | `code`, `value` | `code` is the start of a name, which completes to `value` | all the `completion.*` checks |
+| `lookup` | `code` | `code` is the name of a function | `lookup.lookup`, `lookup.info`, `lookup.eldoc` |
 
 A few tips for writing snippets:
 
@@ -166,6 +175,9 @@ A few tips for writing snippets:
 
 - proof evaluates the `use` of `session-state` in a new session as well,
   where it must not return `value` (an error is fine).
+- The checks of completions and lookups evaluate `value` first, and send
+  the `ns` that comes with its value (if any) along with their requests,
+  just like clients send the namespace of the code they complete.
 - proof interrupts `sleep` as soon as its `out` arrives, so make sure
   your server sends the output right away (in Clojure that takes a
   `flush`, as there's no newline).

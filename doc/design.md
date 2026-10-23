@@ -193,8 +193,9 @@ into, and the tests make sure it stays that way. proof runs its own
 checks against every scenario, and a scenario has to get the same
 verdicts as the servers it names. `-like` turns on all the scenarios of a
 server, and together they have to get that server's column of the matrix
-(apart from `eval.no-code`, which no client sends, and the checks that
-come down to the server's language).
+(apart from `eval.no-code`, which no client sends, the checks that come
+down to the server's language and those of completions and lookups,
+which are nREPL's in proof serve).
 
 The grading works the other way around here. proof can't see what a
 client shows its users, so the client's own tests have to do that. Most
@@ -306,6 +307,7 @@ to have a single test suite that every server can be checked against.
 ## Future Plans
 
 At this point proof covers the core of the protocol (`describe`, unknown
-ops, sessions, `eval`, `stdin`, `interrupt`, `load-file` and the wire format), the requests of
+ops, sessions, `eval`, `stdin`, `interrupt`, `load-file`, completions,
+lookups and the wire format), the requests of
 clients and the server differences clients have to deal with.
 [PLAN.md](../PLAN.md) has what's planned next.

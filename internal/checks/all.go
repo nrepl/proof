@@ -12,6 +12,8 @@ func All() []*check.Check {
 	all = append(all, stdinChecks()...)
 	all = append(all, interruptChecks()...)
 	all = append(all, loadFileChecks()...)
+	all = append(all, completionChecks()...)
+	all = append(all, lookupChecks()...)
 	all = append(all, clientProfileChecks()...)
 	return all
 }

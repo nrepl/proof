@@ -27,6 +27,8 @@ var fakeProfile = &profile.Profile{
 		"multiple":      {Code: "1 2", Values: []string{"1", "2"}},
 		"read-line":     {Code: "read", Value: `"proof"`, Eof: "nil"},
 		"sleep":         {Code: "sleep", Out: "proof"},
+		"completion":    {Code: "pro", Value: "proof"},
+		"lookup":        {Code: "proof"},
 	},
 }
 
@@ -41,8 +43,30 @@ func runFakeChecks(t *testing.T, q quirks, checks []*check.Check, rules ...*chec
 	return checktest.ByID(check.Run(env, checks, rules))
 }
 
+// skipped is what checks get from a server that doesn't have their op.
+func skipped(checks ...[]*check.Check) map[string]check.Verdict {
+	v := map[string]check.Verdict{}
+	for _, cs := range checks {
+		for _, c := range cs {
+			v[c.ID] = check.Skipped
+		}
+	}
+	return v
+}
+
+var (
+	// The fake has both cider-nrepl's complete and info and nREPL's
+	// completions and lookup, which clients only use without the former.
+	fallbacks = map[string]check.Verdict{"completion.completions": check.Skipped, "lookup.lookup": check.Skipped,
+		"lookup.lookup-unknown": check.Skipped}
+	// With nREPL's ops alone, it's the other way around.
+	nreplLookups = checktest.Merged(skipped(completionChecks(), lookupChecks()), map[string]check.Verdict{
+		"completion.completions": check.Pass, "lookup.lookup": check.Pass, "lookup.lookup-unknown": check.Pass})
+)
+
 func TestWellBehavedServerPassesEverything(t *testing.T) {
-	checktest.Verdicts(t, runFake(t, quirks{}), nil)
+	checktest.Verdicts(t, runFake(t, quirks{}), fallbacks)
+	checktest.Verdicts(t, runFake(t, quirks{nreplLookups: true}), nreplLookups)
 }
 
 // Each misbehaviour must produce exactly the listed verdicts, and every
@@ -52,15 +76,9 @@ func TestChecksCatchMisbehaviour(t *testing.T) {
 	// What every client but REPLy goes through first.
 	connects := map[string]check.Verdict{"cider.connect": F, "calva.connect": F, "conjure.connect": F, "fireplace.connect": F,
 		"neorepl.connect": F}
-	// The interrupt checks, which can't tell whether the server has the op.
-	noInterrupts := map[string]check.Verdict{}
-	for _, c := range interruptChecks() {
-		noInterrupts[c.ID] = S
-	}
-	noLoadFile := map[string]check.Verdict{}
-	for _, c := range loadFileChecks() {
-		noLoadFile[c.ID] = S
-	}
+	// The checks that can't tell whether the server has their op.
+	noInterrupts, noLoadFile := skipped(interruptChecks()), skipped(loadFileChecks())
+	noLookups := skipped(completionChecks(), lookupChecks())
 	// What CIDER, Calva and Conjure send to load a file.
 	clientsLoad := map[string]check.Verdict{"cider.load-file": F, "calva.load-file": F, "conjure.load-file": F}
 	cases := []struct {
@@ -69,11 +87,11 @@ func TestChecksCatchMisbehaviour(t *testing.T) {
 		want map[string]check.Verdict
 	}{
 		// Conjure does without the features that need ops.
-		{"ops as a list", quirks{opsList: true}, checktest.Merged(connects, noInterrupts, noLoadFile, map[string]check.Verdict{"describe.ops-dict": F,
+		{"ops as a list", quirks{opsList: true}, checktest.Merged(connects, noInterrupts, noLoadFile, noLookups, map[string]check.Verdict{"describe.ops-dict": F,
 			"describe.required-ops": S, "stdin.need-input": S, "stdin.roundtrip": S, "stdin.eof": S, "conjure.connect": check.Pass})},
 		{"clone not advertised", quirks{noClone: true}, map[string]check.Verdict{"describe.required-ops": F}},
 		{"no versions", quirks{noVersions: true}, map[string]check.Verdict{"describe.versions": W}},
-		{"describe kills the connection", quirks{crashOnDescribe: true}, checktest.Merged(connects, noInterrupts, noLoadFile, map[string]check.Verdict{
+		{"describe kills the connection", quirks{crashOnDescribe: true}, checktest.Merged(connects, noInterrupts, noLoadFile, noLookups, map[string]check.Verdict{
 			"describe.reply": F, "describe.ops-dict": S, "describe.required-ops": S, "describe.versions": S,
 			"stdin.need-input": S, "stdin.roundtrip": S, "stdin.eof": S})},
 		{"no unknown-op", quirks{noUnknownOp: true}, map[string]check.Verdict{"op.unknown": F, "op.unknown-echo": W}},
@@ -83,7 +101,8 @@ func TestChecksCatchMisbehaviour(t *testing.T) {
 			"op.unknown": F, "op.unknown-echo": F, "wire.status-type": F, "conjure.connect": F}},
 		{"no session-closed", quirks{noSessionClosed: true}, map[string]check.Verdict{"session.close": F}},
 		// Only clients put dicts and lists in their requests.
-		{"flat fields only", quirks{flatFields: true}, checktest.Merged(clientsLoad, map[string]check.Verdict{
+		// Conjure's complete has extra-metadata, a list.
+		{"flat fields only", quirks{flatFields: true}, checktest.Merged(clientsLoad, map[string]check.Verdict{"completion.complete-symbol": F,
 			"cider.connect": F, "cider.eval": F, "cider.repl": F, "calva.connect": F, "calva.eval": F, "conjure.eval": F,
 			"neorepl.eval": F})},
 		{"any session accepted", quirks{acceptAnySession: true}, map[string]check.Verdict{"session.unknown": F, "session.closed": F}},
@@ -145,11 +164,34 @@ func TestChecksCatchMisbehaviour(t *testing.T) {
 		{"no load-file op", quirks{noLoadFileOp: true}, checktest.Merged(noLoadFile, clientsLoad)},
 		{"load-file without a value", quirks{loadFileNoValue: true}, checktest.Merged(clientsLoad,
 			map[string]check.Verdict{"load-file.value": F})},
+		{"nREPL's lookups", quirks{nreplLookups: true}, nreplLookups},
+		{"completions before done", quirks{completionsLate: true}, map[string]check.Verdict{"completion.complete-symbol": F}},
+		{"completions before done, nREPL's", quirks{completionsLate: true, nreplLookups: true}, checktest.Merged(nreplLookups,
+			map[string]check.Verdict{"completion.completions": F})},
+		{"string candidates", quirks{stringCandidates: true}, map[string]check.Verdict{
+			"completion.complete": F, "completion.complete-symbol": F}},
+		{"string candidates, nREPL's", quirks{stringCandidates: true, nreplLookups: true}, checktest.Merged(nreplLookups,
+			map[string]check.Verdict{"completion.completions": F})},
+		{"complete takes only a prefix", quirks{completePrefix: true}, map[string]check.Verdict{"completion.complete-symbol": F}},
+		{"empty info for nothing", quirks{emptyLookupInfo: true, nreplLookups: true}, checktest.Merged(nreplLookups,
+			map[string]check.Verdict{"lookup.lookup-unknown": F})},
+		{"line as a string", quirks{lineString: true}, map[string]check.Verdict{"lookup.info": F}},
+		{"line as a string, nREPL's", quirks{lineString: true, nreplLookups: true}, checktest.Merged(nreplLookups,
+			map[string]check.Verdict{"lookup.lookup": F})},
+		{"columns from 0", quirks{columnZero: true}, map[string]check.Verdict{"lookup.info": F}},
+		{"no no-info", quirks{noNoInfo: true}, map[string]check.Verdict{"lookup.info-unknown": F}},
+		{"eldoc of strings", quirks{eldocStrings: true}, map[string]check.Verdict{"lookup.eldoc": F}},
+		// Calva can't jump to a path.
+		{"file as a path", quirks{pathFile: true}, map[string]check.Verdict{"lookup.info": F}},
+		// CIDER finds them, but Calva, Conjure and vim-fireplace don't, and
+		// Conjure falls back to completions and lookup.
+		{"cider/ ops alone", quirks{ciderPrefixed: true}, map[string]check.Verdict{"completion.complete-symbol": S,
+			"completion.completions": check.Pass, "lookup.lookup": check.Pass, "lookup.lookup-unknown": check.Pass}},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
-			checktest.Verdicts(t, runFake(t, c.q), c.want)
+			checktest.Verdicts(t, runFake(t, c.q), checktest.Merged(fallbacks, c.want))
 		})
 	}
 }
