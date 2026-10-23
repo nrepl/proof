@@ -43,12 +43,11 @@ lookups and completions, plus requests that go wrong.
   `proof serve -like babashka`, as the profiles are embedded in the
   binary. People who install proof with `go install` don't have the
   `profiles` folder at all.
-- `proof run profiles/babashka.toml -only 'eval.*'` fails with
-  "expected one profile", as flags after the profile are taken for
-  arguments. proof should either accept them there or say that flags go
-  first.
-- `proof run -h` prints Go's bare "Usage of run:", and the same goes for
-  `proxy` and `serve`.
+- Done: `proof run profiles/babashka.toml -only 'eval.*'` works, as
+  flags can come after the profile (and after the scenarios of `proof
+  serve`).
+- Done: `proof run -h` says how to use `proof run`, rather than Go's bare
+  "Usage of run:", and the same goes for `proxy` and `serve`.
 
 ### Releases
 

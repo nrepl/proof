@@ -157,6 +157,35 @@ func TestProxyNeedsAServer(t *testing.T) {
 	}
 }
 
+func TestProxyHelp(t *testing.T) {
+	var stderr bytes.Buffer
+	if code := proxyUntil(context.Background(), []string{"-h"}, io.Discard, &stderr, nil); code != 0 {
+		t.Errorf("exit status %d, want 0", code)
+	}
+	if !strings.Contains(stderr.String(), "Usage: proof proxy [flags] [PROFILE]") {
+		t.Errorf("-h doesn't say how to use proof proxy:\n%s", stderr.String())
+	}
+}
+
+func TestFlagsCanFollowArguments(t *testing.T) {
+	var o proxyOptions
+	fs := proxyFlags(io.Discard, &o)
+	args, err := parseArgs(fs, []string{"-v", "babashka", "-listen", "127.0.0.1:7888", "extra", "-json", "r.json"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Join(args, " ") != "babashka extra" || !o.verbose || o.listen != "127.0.0.1:7888" || o.json != "r.json" {
+		t.Errorf("got arguments %q and options %+v", args, o)
+	}
+	if _, err := parseArgs(fs, []string{"babashka", "-no-such-flag"}); err == nil {
+		t.Error("an unknown flag after an argument should be an error")
+	}
+	args, err = parseArgs(fs, []string{"a", "--", "-b", "c"})
+	if err != nil || strings.Join(args, " ") != "a -b c" {
+		t.Errorf("everything after -- should be an argument, got %q (%v)", args, err)
+	}
+}
+
 func TestListShowsEverything(t *testing.T) {
 	var buf bytes.Buffer
 	list(&buf)

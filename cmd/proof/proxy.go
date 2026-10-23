@@ -41,8 +41,7 @@ type proxyOptions struct {
 }
 
 func proxyFlags(out io.Writer, o *proxyOptions) *flag.FlagSet {
-	fs := flag.NewFlagSet("proxy", flag.ContinueOnError)
-	fs.SetOutput(out)
+	fs := newFlags("proxy", "[PROFILE]", out)
 	fs.StringVar(&o.address, "address", "", "forward clients to a server already running at `host:port` instead of launching the one the profile describes")
 	o.register(fs)
 	return fs
@@ -74,18 +73,18 @@ func proxyUntil(ctx context.Context, args []string, stdout, stderr io.Writer, li
 	stderr = &syncWriter{w: stderr}
 	var o proxyOptions
 	fs := proxyFlags(stderr, &o)
-	if err := fs.Parse(args); err != nil {
-		return 2
+	args, err := parseArgs(fs, args)
+	if err != nil {
+		return flagStatus(err)
 	}
-	if fs.NArg() > 1 || (fs.NArg() == 0 && o.address == "") {
+	if len(args) > 1 || (len(args) == 0 && o.address == "") {
 		fmt.Fprintln(stderr, "proof proxy: expected a profile or -address")
 		return 2
 	}
 	upstream, name := o.address, "the server"
 	var p *profile.Profile
-	if fs.NArg() == 1 {
-		var err error
-		if p, err = profile.Find(fs.Arg(0)); err != nil {
+	if len(args) == 1 {
+		if p, err = profile.Find(args[0]); err != nil {
 			fmt.Fprintln(stderr, "proof:", err)
 			return 2
 		}
@@ -98,7 +97,6 @@ func proxyUntil(ctx context.Context, args []string, stdout, stderr io.Writer, li
 	var srv *server.Server
 	if upstream == "" {
 		fmt.Fprintf(stderr, "Starting %s...\n", p.Name)
-		var err error
 		if srv, err = server.Start(ctx, p); err != nil {
 			if ctx.Err() != nil {
 				return 130

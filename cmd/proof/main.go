@@ -4,6 +4,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -90,9 +91,51 @@ type options struct {
 
 var opts options
 
-func runFlags(out io.Writer) *flag.FlagSet {
-	fs := flag.NewFlagSet("run", flag.ContinueOnError)
+// newFlags makes the flag set of a command, whose -h says how to use it
+// with the given arguments.
+func newFlags(name, args string, out io.Writer) *flag.FlagSet {
+	fs := flag.NewFlagSet(name, flag.ContinueOnError)
 	fs.SetOutput(out)
+	fs.Usage = func() {
+		fmt.Fprintf(fs.Output(), "Usage: proof %s [flags] %s\n\nFlags:\n", name, args)
+		fs.PrintDefaults()
+	}
+	return fs
+}
+
+// parseArgs parses the flags in args wherever they are, as the flag
+// package stops at the first argument that isn't one, and returns the
+// other arguments. Everything after "--" is an argument.
+func parseArgs(fs *flag.FlagSet, args []string) ([]string, error) {
+	var rest []string
+	for {
+		if err := fs.Parse(args); err != nil {
+			return nil, err
+		}
+		parsed := len(args) - fs.NArg()
+		if parsed > 0 && args[parsed-1] == "--" {
+			return append(rest, fs.Args()...), nil
+		}
+		args = fs.Args()
+		if len(args) == 0 {
+			return rest, nil
+		}
+		rest = append(rest, args[0])
+		args = args[1:]
+	}
+}
+
+// flagStatus is the exit status for an error from parseArgs, which has
+// shown how to use the command already. Asking for that with -h is fine.
+func flagStatus(err error) int {
+	if errors.Is(err, flag.ErrHelp) {
+		return 0
+	}
+	return 2
+}
+
+func runFlags(out io.Writer) *flag.FlagSet {
+	fs := newFlags("run", "PROFILE", out)
 	fs.StringVar(&opts.address, "address", "", "connect to a server already running at `host:port` instead of launching one")
 	fs.StringVar(&opts.json, "json", "", "also write a JSON report to `file`")
 	fs.StringVar(&opts.only, "only", "", "run only checks whose id matches the glob `pattern` (e.g. 'eval.*')")
@@ -102,14 +145,15 @@ func runFlags(out io.Writer) *flag.FlagSet {
 
 func run(args []string) int {
 	fs := runFlags(os.Stderr)
-	if err := fs.Parse(args); err != nil {
-		return 2
+	args, err := parseArgs(fs, args)
+	if err != nil {
+		return flagStatus(err)
 	}
-	if fs.NArg() != 1 {
+	if len(args) != 1 {
 		fmt.Fprintln(os.Stderr, "proof run: expected one profile")
 		return 2
 	}
-	p, err := profile.Find(fs.Arg(0))
+	p, err := profile.Find(args[0])
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "proof:", err)
 		return 2
@@ -118,7 +162,7 @@ func run(args []string) int {
 	// Catch mistakes in the profile or flags before paying for a server
 	// start, which can take minutes.
 	if err := check.UnknownIDs(p.ExpectedFailures, allIDs()); err != nil {
-		fmt.Fprintf(os.Stderr, "proof: %s: %v\n", fs.Arg(0), err)
+		fmt.Fprintf(os.Stderr, "proof: %s: %v\n", args[0], err)
 		return 2
 	}
 	selected, err := filter(checks.All(), opts.only)
