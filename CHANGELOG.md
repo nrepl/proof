@@ -26,4 +26,5 @@ Initial release.
   the tests of clients that can behave like other servers
   ([#3](https://github.com/nrepl/proof/pull/3)).
 - [#10](https://github.com/nrepl/proof/pull/10): Binaries for Linux, macOS
-  and Windows on every release.
+  and Windows on every release, and a GitHub Action for running proof in the
+  CI of a server.

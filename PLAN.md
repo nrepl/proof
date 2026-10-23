@@ -57,10 +57,10 @@ lookups and completions, plus requests that go wrong.
 - Done: binaries for Linux, macOS and Windows on every release, so the
   CI of a server doesn't need Go. The Release workflow builds them when
   a version gets tagged.
-- A GitHub Action, so a server's workflow needs nothing but `uses:
+- Done: a GitHub Action, so a server's workflow needs nothing but `uses:
   nrepl/proof@v0.1.0` and the path to its profile.
-- The CI section of [Usage](doc/usage.md) uses the release instead of
-  `@latest`.
+- Done: the CI section of [Usage](doc/usage.md) uses the release instead
+  of `@latest`.
 
 ### interrupt
 

@@ -357,6 +357,8 @@ proof uses a few GitHub Actions workflows:
 - CI checks the formatting, runs `go vet` and the tests on Linux and
   macOS (with both the oldest supported Go version and the latest
   stable one) and makes sure proof builds on Windows.
+- CI also runs proof's GitHub Action (`action.yml`) against Babashka,
+  the way a server's CI would use it.
 - Compatibility runs all the profiles against their servers every day
   (and on every push to `main`) and builds the compatibility matrix in
   the job summary. As servers failing checks is perfectly normal, this

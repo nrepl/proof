@@ -1,0 +1,77 @@
+name: proof
+description: Check that an nREPL server works with the clients people use
+branding:
+  icon: check-circle
+  color: green
+
+inputs:
+  profile:
+    description: The profile of the server, or the name of one that comes with proof (e.g. babashka)
+    required: true
+  args:
+    description: More arguments for proof run, separated by spaces (e.g. -v -json report.json)
+    required: false
+    default: ''
+
+runs:
+  using: composite
+  steps:
+    - name: Install proof
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+        OS: ${{ runner.os }}
+        ARCH: ${{ runner.arch }}
+      run: |
+        bin="$RUNNER_TEMP/proof-bin"
+        mkdir -p "$bin"
+        os=$(echo "$OS" | tr '[:upper:]' '[:lower:]')
+        [ "$os" = macos ] && os=darwin
+        case "$ARCH" in
+          X64) arch=amd64 ;;
+          ARM64) arch=arm64 ;;
+          *) arch=unknown ;;
+        esac
+        # The action lives in .../_actions/OWNER/REPO/REF. Composite
+        # actions don't always get github.action_ref and
+        # github.action_repository (actions/runner#2473), so they come from
+        # the path instead.
+        path=${GITHUB_ACTION_PATH//\\//}
+        ref=$(basename "$path")
+        repo=$(basename "$(dirname "$(dirname "$path")")")/$(basename "$(dirname "$path")")
+
+        # A release (e.g. uses: nrepl/proof@v0.1.0) comes with binaries.
+        download() {
+          [[ "$ref" =~ ^v[0-9]+\.[0-9]+\.[0-9]+ ]] && [ "$arch" != unknown ] || return 1
+          local name="proof_${ref#v}_${os}_${arch}" archive dir="$RUNNER_TEMP/proof-download"
+          archive="$name.tar.gz"
+          [ "$os" = windows ] && archive="$name.zip"
+          gh release download "$ref" --repo "$repo" --pattern "$archive" --pattern checksums.txt --dir "$dir" --clobber &&
+            (cd "$dir" && grep " $archive\$" checksums.txt | shasum -a 256 -c -) || return 1
+          if [ "$os" = windows ]; then
+            7z x -y -o"$dir" "$dir/$archive" > /dev/null && mv "$dir/$name/proof.exe" "$bin/"
+          else
+            tar -xzf "$dir/$archive" -C "$dir" && mv "$dir/$name/proof" "$bin/"
+          fi
+        }
+
+        # Anything else (a branch, a commit or the action in proof's own
+        # repository), or a release that can't be downloaded, gets built
+        # from source, which needs Go.
+        if ! download; then
+          if ! command -v go > /dev/null; then
+            echo "Building proof from $repo@$ref needs Go, so set it up (e.g. with actions/setup-go) before this step."
+            exit 1
+          fi
+          (cd "$GITHUB_ACTION_PATH" && go build -o "$bin/" ./cmd/proof)
+        fi
+        echo "$bin" >> "$GITHUB_PATH"
+    - name: Run proof
+      shell: bash
+      env:
+        PROFILE: ${{ inputs.profile }}
+        ARGS: ${{ inputs.args }}
+      run: |
+        # The arguments are split into words, but they're not file names.
+        set -f
+        proof run $ARGS "$PROFILE"
