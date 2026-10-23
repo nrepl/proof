@@ -56,7 +56,7 @@ func serveUntil(ctx context.Context, args []string, stdout, stderr io.Writer, li
 		}
 		shown = append([]string{"like " + name}, shown...)
 	}
-	srv, err := serve.Listen(o.listen, version, scenarios)
+	srv, err := serve.Listen(o.listen, proofVersion(), scenarios)
 	if err != nil {
 		fmt.Fprintln(stderr, "proof:", err)
 		return 2
@@ -75,6 +75,6 @@ func serveUntil(ctx context.Context, args []string, stdout, stderr io.Writer, li
 
 	<-ctx.Done()
 	fmt.Fprintln(stderr)
-	r := report.Run{Proof: version, Server: "client traffic to " + name, Address: srv.Addr(), Started: started}
+	r := report.Run{Proof: proofVersion(), Server: "client traffic to " + name, Address: srv.Addr(), Started: started}
 	return gradeClients(stdout, stderr, r, srv.Stop(time.Second), o.clientOptions, nil)
 }

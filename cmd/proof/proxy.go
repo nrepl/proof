@@ -123,7 +123,7 @@ func proxyUntil(ctx context.Context, args []string, stdout, stderr io.Writer, li
 
 	<-ctx.Done()
 	fmt.Fprintln(stderr)
-	r := report.Run{Proof: version, Server: "client traffic to " + name, Address: upstream, Started: started}
+	r := report.Run{Proof: proofVersion(), Server: "client traffic to " + name, Address: upstream, Started: started}
 	return gradeClients(stdout, stderr, r, px.Stop(time.Second), o.clientOptions, srv)
 }
 

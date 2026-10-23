@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/signal"
 	"path"
+	"runtime/debug"
 	"strings"
 	"syscall"
 	"time"
@@ -23,7 +24,27 @@ import (
 	"github.com/nrepl/proof/internal/server"
 )
 
-const version = "0.1.0-dev"
+// version is set for releases, with -ldflags "-X main.version=...".
+var version string
+
+// proofVersion returns the version of proof.
+func proofVersion() string {
+	info, _ := debug.ReadBuildInfo()
+	return versionOf(version, info)
+}
+
+// versionOf returns the version a release set, or else the one go install
+// recorded in the binary's build info (which may be nil). Builds that have
+// neither (e.g. go run) are 0.0.0-dev, so the version still has numbers.
+func versionOf(release string, info *debug.BuildInfo) string {
+	switch {
+	case release != "":
+		return release
+	case info != nil && info.Main.Version != "" && info.Main.Version != "(devel)":
+		return strings.TrimPrefix(info.Main.Version, "v")
+	}
+	return "0.0.0-dev"
+}
 
 const usage = `proof checks an nREPL server's compatibility with existing clients.
 
@@ -64,7 +85,7 @@ func main() {
 	case "list":
 		list(os.Stdout)
 	case "version", "--version", "-version":
-		fmt.Println("proof", version)
+		fmt.Println("proof", proofVersion())
 	case "help", "-h", "--help":
 		printUsage(os.Stdout)
 	default:
@@ -192,7 +213,7 @@ func run(args []string) int {
 	results := check.Run(env, selected, checks.WireRules())
 	outcome := check.Apply(results, p.ExpectedFailures, opts.only == "")
 
-	r := report.Run{Proof: version, Server: p.Name, Address: addr, Started: started, Results: results}
+	r := report.Run{Proof: proofVersion(), Server: p.Name, Address: addr, Started: started, Results: results}
 	report.Text(os.Stdout, r, opts.verbose)
 	for _, id := range outcome.Stale {
 		fmt.Printf("%s is listed in expected-failures but didn't fail; remove it from the profile\n", id)

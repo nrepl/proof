@@ -51,8 +51,8 @@ lookups and completions, plus requests that go wrong.
 
 ### Releases
 
-- `proof version` takes the version from the build info, so a binary
-  installed with `go install ...@v0.1.0` knows its version.
+- Done: `proof version` takes the version from the build info, so a
+  binary installed with `go install ...@v0.1.0` knows its version.
 - A CHANGELOG.
 - Binaries for Linux, macOS and Windows on every release, so the CI of a
   server doesn't need Go.
