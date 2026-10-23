@@ -53,9 +53,10 @@ lookups and completions, plus requests that go wrong.
 
 - Done: `proof version` takes the version from the build info, so a
   binary installed with `go install ...@v0.1.0` knows its version.
-- A CHANGELOG.
-- Binaries for Linux, macOS and Windows on every release, so the CI of a
-  server doesn't need Go.
+- Done: a CHANGELOG.
+- Done: binaries for Linux, macOS and Windows on every release, so the
+  CI of a server doesn't need Go. The Release workflow builds them when
+  a version gets tagged.
 - A GitHub Action, so a server's workflow needs nothing but `uses:
   nrepl/proof@v0.1.0` and the path to its profile.
 - The CI section of [Usage](doc/usage.md) uses the release instead of

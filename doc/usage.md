@@ -7,19 +7,24 @@ profile format are covered separately in [Profiles](profiles.md).
 
 ## Installation
 
-proof is a single Go binary, so installing it is a very simple process.
-With Go 1.23 or newer you can do:
+proof is a single binary, so installing it is a very simple process.
+Every [release](https://github.com/nrepl/proof/releases) comes with
+binaries for Linux, macOS and Windows. Just download the one for your
+platform and put `proof` somewhere on your `PATH`.
+
+With Go 1.23 or newer you can also install it with `go install`:
 
 ```shell
 $ go install github.com/nrepl/proof/cmd/proof@latest
 ```
 
-That puts `proof` in `$(go env GOPATH)/bin`.
+That puts `proof` in `$(go env GOPATH)/bin`. `@latest` is the latest
+release, and `@main` is whatever is on `main` at the moment.
 
 > [!NOTE]
-> There are no tagged releases yet, so `@latest` is simply whatever is on
-> `main`. If you always need the same build (e.g. in CI), you can install a
-> specific commit with `@<commit-sha>`.
+> proof 0.1.0 is not out yet, so for now `@latest` is simply whatever is
+> on `main`. If you always need the same build (e.g. in CI), you can
+> install a specific commit with `@<commit-sha>`.
 
 Alternatively you can build proof from source:
 

@@ -22,7 +22,9 @@ eventually.
 
 ## Quick Start
 
-proof is a single binary. You can install it with Go 1.23 or newer:
+proof is a single binary. You can download it from the
+[releases](https://github.com/nrepl/proof/releases) or install it with Go
+1.23 or newer:
 
 ```shell
 $ go install github.com/nrepl/proof/cmd/proof@latest

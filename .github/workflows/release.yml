@@ -1,0 +1,35 @@
+# Builds proof for every platform when a version is tagged (e.g. v0.1.0)
+# and publishes the binaries in a GitHub release, whose notes are the
+# version's section of the CHANGELOG.
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version: stable
+      - name: Build
+        run: script/build-release "${GITHUB_REF_NAME#v}" dist
+      - name: Write the release notes
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          # Everything between the version's heading and the next one.
+          awk -v heading="## $version " 'index($0, heading) == 1 { on = 1; next } on && /^## / { exit } on' CHANGELOG.md > notes.md
+          if ! grep -q '[^[:space:]]' notes.md; then
+            echo "CHANGELOG.md has no section for $version"
+            exit 1
+          fi
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" --title "proof ${GITHUB_REF_NAME#v}" --notes-file notes.md dist/*
