@@ -352,7 +352,7 @@ links using it still point to the right lines.
 
 ## Continuous Integration
 
-proof uses a couple of GitHub Actions workflows:
+proof uses a few GitHub Actions workflows:
 
 - CI checks the formatting, runs `go vet` and the tests on Linux and
   macOS (with both the oldest supported Go version and the latest
@@ -362,3 +362,22 @@ proof uses a couple of GitHub Actions workflows:
   the job summary. As servers failing checks is perfectly normal, this
   workflow fails only when proof itself can't do its job (e.g. a server
   can't be installed or doesn't start).
+- Release builds the binaries for every platform when a version gets
+  tagged and publishes them in a GitHub release.
+
+## Releasing
+
+Releasing a new version of proof is a very simple process:
+
+1. Make sure CI and the Compatibility workflow are green.
+2. Turn the `main (unreleased)` section of the CHANGELOG into a section
+   for the new version (e.g. `## 0.2.0 (2027-01-15)`).
+3. Update the version in the examples in [Usage](usage.md) (e.g.
+   `nrepl/proof@v0.2.0`).
+4. Commit the changes ("Release 0.2.0"), tag the commit (`v0.2.0`) and
+   push both.
+
+The Release workflow takes it from there. It builds the binaries with
+`script/build-release` and publishes them in a GitHub release, whose
+notes are the version's section of the CHANGELOG. If you edit that
+section later, update the notes of the release as well.
