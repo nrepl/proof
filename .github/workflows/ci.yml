@@ -31,3 +31,19 @@ jobs:
       - run: go test -race ./...
       - name: Build for Windows
         run: GOOS=windows go build -o /dev/null ./cmd/proof
+
+  # Runs the action the way a server's CI would, against Babashka. As this
+  # isn't a release, the action builds proof from source. It's a test of
+  # the action rather than of Babashka, so only the eval checks run, and new
+  # checks Babashka fails don't break proof's CI.
+  action:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: DeLaGuardo/setup-clojure@13.7.0
+        with:
+          bb: '1.13.226'
+      - uses: ./
+        with:
+          profile: babashka
+          args: -v -only eval.*

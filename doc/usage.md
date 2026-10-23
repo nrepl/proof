@@ -191,7 +191,8 @@ Expected failures still show up in the report. When one of them starts
 passing, proof will fail the run and ask you to remove it from the list.
 See [Profiles](profiles.md#expected-failures) for more details.
 
-Here's an example GitHub Actions job:
+On GitHub Actions you can use proof's own action, which runs `proof run`
+with your profile:
 
 ```yaml
 proof:
@@ -199,12 +200,21 @@ proof:
   steps:
     - uses: actions/checkout@v7
     # set up and build your server here
-    - uses: actions/setup-go@v7
+    - uses: nrepl/proof@v0.1.0
       with:
-        go-version: stable
-    - run: go install github.com/nrepl/proof/cmd/proof@latest
-    - run: proof run -v test/proof.toml
+        profile: test/proof.toml
+        args: -v
 ```
+
+`args` are passed to `proof run` before the profile, so that's where
+`-only` and `-json` go as well. The action downloads the binary of the
+release you've picked, so it doesn't need Go. If you point it to a branch
+or a commit instead (e.g. `nrepl/proof@main`), it builds proof from
+source with the Go that comes with the runner.
+
+Elsewhere you can download proof from its
+[releases](https://github.com/nrepl/proof/releases) or install it with
+`go install github.com/nrepl/proof/cmd/proof@v0.1.0`.
 
 ## Comparing Servers
 
