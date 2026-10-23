@@ -35,11 +35,10 @@ lookups and completions, plus requests that go wrong.
 
 ### Rough Edges
 
-- `wire.error-terminal` fails Babashka for a message with nothing but
-  `changed-namespaces` that arrives after `eval-error`. The rule fails
-  on any key that's not in `afterErrorKeys` (`internal/checks/wire.go`),
-  but the clients it names (REPLy and rebel-readline) lose only output,
-  values and `need-input` there, so it should look for those instead.
+- Done: `wire.error-terminal` no longer fails Babashka for a message
+  with nothing but `changed-namespaces` that arrives after `eval-error`.
+  The clients it names (REPLy and rebel-readline) lose only output,
+  values and `need-input` there, so that's what it looks for now.
 - `proof run babashka` and `proof proxy babashka` don't work, even
   though `proof serve -like babashka` does. The profiles should be
   embedded in the binary, as people who install proof with `go install`

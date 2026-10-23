@@ -90,8 +90,12 @@ func TestChecksCatchMisbehaviour(t *testing.T) {
 		{"ns fallback", quirks{nsFallback: true}, map[string]check.Verdict{"eval.unknown-ns": F}},
 		{"two dones", quirks{twoDones: true}, map[string]check.Verdict{"wire.one-done": W}},
 		{"value after done", quirks{valueAfterDone: true}, map[string]check.Verdict{"wire.after-done": W, "wire.error-terminal": F}},
+		// REPLy and rebel-readline don't read changed-namespaces, so it
+		// doesn't matter that they miss it after an error.
+		{"state after done", quirks{stateAfterDone: true}, map[string]check.Verdict{"wire.after-done": W}},
 		{"out and value together", quirks{payloadTogether: true}, map[string]check.Verdict{"wire.one-payload": F}},
 		{"output after eval-error", quirks{errorThenOut: true}, map[string]check.Verdict{"wire.error-terminal": F}},
+		{"state after eval-error", quirks{errorThenState: true}, map[string]check.Verdict{}},
 		{"session not echoed", quirks{noSessionEcho: true}, map[string]check.Verdict{"wire.session-echo": F}},
 		{"output without id", quirks{noID: true}, map[string]check.Verdict{
 			"wire.id": W, "eval.stdout": F, "eval.stderr": F, "eval.error-report": W}},

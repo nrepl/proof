@@ -17,10 +17,6 @@ import (
 // Fields that are strings wherever they appear.
 var stringFields = []string{"id", "session", "ns", "value", "out", "err", "new-session", "ex", "root-ex"}
 
-// Keys that may legitimately follow an error status, e.g. on the final
-// "done" message.
-var afterErrorKeys = map[string]bool{"id": true, "session": true, "status": true, "ns": true}
-
 // Keys that may arrive after done: the spec allows late output.
 var afterDoneKeys = map[string]bool{"id": true, "session": true, "out": true, "err": true}
 
@@ -178,7 +174,7 @@ func WireRules() []*check.Rule {
 		},
 		{
 			ID:       "wire.error-terminal",
-			Title:    "Nothing but done follows an error status",
+			Title:    "No output, value or need-input follows an error status",
 			Severity: check.Fail,
 			Why:      "REPLy (behind lein repl) and rebel-readline stop reading a request at the first error or eval-error status, so later output or values never show up.",
 			Refs:     []check.Ref{replyTerminal, rebelTerminal},
@@ -189,7 +185,7 @@ func WireRules() []*check.Rule {
 				// nREPL goes on with the next form after one throws, and
 				// REPLy sends one form at a time. Only Clojure code can be
 				// told apart into forms, though.
-				if k := firstKeyNotIn(r.Msg, afterErrorKeys); k != "" && !severalForms(r.Req.Str("code")) {
+				if k := lostAfterError(r.Msg); k != "" && !severalForms(r.Req.Str("code")) {
 					report(k+" arrived after an error status", r.Msg.String())
 				}
 			}),
@@ -323,6 +319,22 @@ func eachReply(f func(reply, check.Reporter)) func([]nrepl.Event, check.Reporter
 			}
 		}
 	}
+}
+
+// lostAfterError returns the part of m that REPLy and rebel-readline would
+// have shown, or "" if there's none. They no longer read a request's
+// replies after an error status, but anything else in them (e.g.
+// Babashka's changed-namespaces) is of no use to them anyway.
+func lostAfterError(m nrepl.Message) string {
+	for _, k := range []string{"err", "out", "value"} {
+		if m.Has(k) {
+			return k
+		}
+	}
+	if m.HasStatus("need-input") {
+		return "need-input"
+	}
+	return ""
 }
 
 // firstKeyNotIn returns the first key of m (in sorted order) that allowed

@@ -36,8 +36,10 @@ type quirks struct {
 	nsFallback       bool // unknown ns silently falls back to user
 	twoDones         bool
 	valueAfterDone   bool
+	stateAfterDone   bool // changed-namespaces follows done, like Babashka's
 	payloadTogether  bool // out and value in one message
 	errorThenOut     bool // output after the eval-error status
+	errorThenState   bool // changed-namespaces after the eval-error status
 	noSessionEcho    bool
 	noID             bool // output messages carry no id
 	intValue         bool // value is an integer
@@ -320,6 +322,9 @@ func (s *fakeServer) eval(c net.Conn, req nrepl.Message, local map[string]bool) 
 		if q.valueAfterDone {
 			s.send(c, req, map[string]any{"value": "late"})
 		}
+		if q.stateAfterDone {
+			s.send(c, req, map[string]any{"changed-namespaces": map[string]any{}})
+		}
 	}
 	var values []string
 	for _, form := range forms(code) {
@@ -350,6 +355,9 @@ func (s *fakeServer) eval(c net.Conn, req nrepl.Message, local map[string]bool) 
 			}
 			if q.errorThenOut {
 				s.send(c, req, map[string]any{"out": "after the error"})
+			}
+			if q.errorThenState {
+				s.send(c, req, map[string]any{"changed-namespaces": map[string]any{}})
 			}
 			finish()
 			return
