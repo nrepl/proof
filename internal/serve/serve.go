@@ -211,7 +211,7 @@ func (s *Server) encode(msg map[string]any) []byte {
 var (
 	done           = []any{"done"}
 	unknownSession = map[string]any{"status": []any{"error", "unknown-session", "done"}}
-	ops            = []string{"clone", "close", "describe", "eval", "interrupt", "stdin"}
+	ops            = []string{"clone", "close", "describe", "eval", "interrupt", "load-file", "stdin"}
 )
 
 // offers reports whether the server supports an op.
@@ -253,10 +253,14 @@ func (s *Server) handle(c *conn, req nrepl.Message) bool {
 		s.clone(c, req, sess)
 	case "close":
 		s.close(c, req, sess)
-	case "eval":
+	case "eval", "load-file":
 		if s.b.hangUp {
 			c.hangUp()
 			return false
+		}
+		if op == "load-file" {
+			// An eval of what's in the file, as on nREPL.
+			req = req.With(nrepl.Message{"code": req["file"]})
 		}
 		s.eval(c, req, sess)
 	case "stdin":
@@ -503,7 +507,11 @@ func (s *Server) runEval(sess *session, j *job) {
 		},
 	}
 	final := map[string]any{"status": done}
-	// held is the value last-value sends at the end.
+	// load-file sends only the value of the last form, without its ns,
+	// and stops at the first error, as nREPL does.
+	loading := req.Str("op") == "load-file"
+	lastOnly := s.b.lastValue || loading
+	// held is the value last-value and load-file send at the end.
 	var held map[string]any
 	rd := &reader{src: req.Str("code")}
 	for !stopped() {
@@ -528,14 +536,17 @@ func (s *Server) runEval(sess *session, j *job) {
 			final, held = s.fail(reply, t, e.ns), nil
 			// nREPL goes on with the next form, unless there's no telling
 			// where it starts. Basilisp and jank give up on the rest.
-			if t.phase == reading || s.b.lastValue || s.b.errorWithDone {
+			if t.phase == reading || lastOnly || s.b.errorWithDone {
 				break
 			}
 			continue
 		}
 		sess.b.push(v)
-		msg := map[string]any{"value": pr(v), "ns": e.ns}
-		if s.b.lastValue {
+		msg := map[string]any{"value": pr(v)}
+		if !loading {
+			msg["ns"] = e.ns
+		}
+		if lastOnly {
 			held = msg
 		} else {
 			reply(msg)
@@ -544,8 +555,9 @@ func (s *Server) runEval(sess *session, j *job) {
 	if held != nil {
 		reply(held)
 	}
-	// A namespace given with the request is only for this eval.
-	if !req.Has("ns") {
+	// A namespace given with the request is only for this eval, and
+	// loading a file doesn't change the session's either.
+	if !req.Has("ns") && !loading {
 		sess.b.setNS(e.ns)
 	}
 	if sess.finish(j) {

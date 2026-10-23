@@ -46,8 +46,8 @@ type clientStep struct {
 	// an earlier step got.
 	Send request `toml:"send"`
 	// Snippet names a snippet of the server's profile whose code goes in
-	// the request, and whose value the reply has to have. It stands for
-	// the user's code.
+	// the request (in file for load-file, and code otherwise), and whose
+	// value the reply has to have. It stands for the user's code.
 	Snippet string `toml:"snippet"`
 	// NewSession names the session the reply has to hand back.
 	NewSession string `toml:"new-session"`
@@ -147,8 +147,13 @@ func (c clientCheck) replay(t *check.T) {
 		}
 		var want string
 		if s.Snippet != "" {
+			// The user's code is in a file for load-file.
+			field := "code"
+			if req.Str("op") == "load-file" {
+				field = "file"
+			}
 			sn := t.Snippet(s.Snippet)
-			req["code"], want = sn.Code, sn.Value
+			req[field], want = sn.Code, sn.Value
 		}
 		step := fmt.Sprintf("step %d (%s)", i+1, req.Str("op"))
 		resp := t.Request(conn, req)

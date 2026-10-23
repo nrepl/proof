@@ -10,8 +10,10 @@ import (
 // Links are pinned to commits so line numbers stay put.
 const (
 	ciderBase     = "https://github.com/clojure-emacs/cider/blob/9e049baa1c2c136724d7538b1df6898ee77de6e7/lisp/"
-	calvaBase     = "https://github.com/BetterThanTomorrow/calva/blob/ad00dd7e518e0d08262810673111eaeddc5c2fdd/src/nrepl/index.ts"
-	conjureBase   = "https://github.com/Olical/conjure/blob/9842bf38464df071f72546f65fa6ec44942ca7b2/fnl/conjure/client/clojure/nrepl/server.fnl"
+	calvaSrc      = "https://github.com/BetterThanTomorrow/calva/blob/ad00dd7e518e0d08262810673111eaeddc5c2fdd/src/"
+	calvaBase     = calvaSrc + "nrepl/index.ts"
+	conjureSrc    = "https://github.com/Olical/conjure/blob/9842bf38464df071f72546f65fa6ec44942ca7b2/fnl/conjure/"
+	conjureBase   = conjureSrc + "client/clojure/nrepl/server.fnl"
 	fireplaceBase = "https://github.com/tpope/vim-fireplace/blob/5e66509599de92550762cf2681338fc4cd1e71cf/autoload/"
 	nreplBase     = "https://github.com/nrepl/nrepl/blob/16cc5cb0f2adae44d389ba23c864a02eaa4e71a5/src/clojure/nrepl/"
 	specBase      = "https://github.com/nrepl/spec.nrepl.org/blob/67796e34ac34f2f28c3af685fc3ab432fe5eb03f/spec.md"
@@ -72,9 +74,15 @@ var (
 	ciderReplPrompt    = ref("CIDER shows the REPL's next prompt at done", ciderBase+"cider-repl.el#L1363-L1366")
 	ciderSpinner       = ref("CIDER stops its spinner at done", ciderBase+"cider-client.el#L105-L117")
 	calvaInterrupted   = ref("Calva settles an eval only at its done", calvaBase+"#L1504-L1527")
-	conjureInterrupt   = ref("Conjure interrupts without interrupt-id", "https://github.com/Olical/conjure/blob/9842bf38464df071f72546f65fa6ec44942ca7b2/fnl/conjure/client/clojure/nrepl/action.fnl#L260-L297")
+	conjureInterrupt   = ref("Conjure interrupts without interrupt-id", conjureSrc+"client/clojure/nrepl/action.fnl#L260-L297")
 	fireplaceInterrupt = ref("vim-fireplace interrupts on Ctrl-C and goes on in the same session", fireplaceBase+"fireplace.vim#L1346-L1369")
 	neoreplInterrupt   = ref("neorepl interrupt stops an eval from another process", neoreplBase+"main.clj#L374-L385")
+	ciderLoadFile      = ref("CIDER marks a buffer as loaded when it gets a value", ciderBase+"cider-eval.el#L614-L635")
+	ciderLoadFileError = ref("CIDER shows an error when it gets eval-error", ciderBase+"cider-eval.el#L265-L274")
+	calvaLoadFile      = ref("Calva says there were no results without a value", calvaSrc+"evaluate.ts#L786-L793")
+	calvaLoadFileError = ref("Calva tells a failed load by its ex", calvaBase+"#L1461-L1463")
+	conjureLoadFile    = ref("Conjure shows out, err and value and nothing else", conjureSrc+"client/clojure/nrepl/ui.fnl#L24-L50")
+	nreplLoadFile      = ref("nREPL's load-file", nreplBase+"middleware/load_file.clj#L41-L70")
 	ciderNeedInput     = ref("CIDER need-input handling", ciderBase+"nrepl-client.el#L948-L950")
 	nreplStdinEOF      = ref("nREPL treats an empty stdin as EOF", nreplBase+"middleware/session.clj#L386-L396")
 

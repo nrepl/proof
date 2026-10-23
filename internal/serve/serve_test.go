@@ -407,10 +407,10 @@ func TestDescribe(t *testing.T) {
 		ops       []string
 		version   any
 	}{
-		{nil, []string{"clone", "close", "describe", "eval", "interrupt", "stdin"},
+		{nil, []string{"clone", "close", "describe", "eval", "interrupt", "load-file", "stdin"},
 			map[string]any{"major": int64(0), "minor": int64(1), "incremental": int64(0), "version-string": "0.1.0-dev"}},
-		{[]string{"no-close-op", "no-interrupt", "no-stdin", "string-versions"}, []string{"clone", "describe", "eval"}, "0.1.0-dev"},
-		{[]string{"read-line-throws"}, []string{"clone", "close", "describe", "eval", "interrupt"},
+		{[]string{"no-close-op", "no-interrupt", "no-stdin", "string-versions"}, []string{"clone", "describe", "eval", "load-file"}, "0.1.0-dev"},
+		{[]string{"read-line-throws"}, []string{"clone", "close", "describe", "eval", "interrupt", "load-file"},
 			map[string]any{"major": int64(0), "minor": int64(1), "incremental": int64(0), "version-string": "0.1.0-dev"}},
 	}
 	for _, tc := range cases {

@@ -149,3 +149,27 @@ line = 3
 column = 1
 "nrepl.middleware.print/print" = "cider.nrepl.pprint/pprint"
 "nrepl.middleware.print/options" = { associative = 1, length = 500, level = 50, right-margin = 72 }
+
+[[checks]]
+id = "conjure.load-file"
+title = "Conjure can evaluate a file"
+why = "Evaluating a file sends what's in it with load-file, along with the file's path and options for printing the value, so a server that can't handle them breaks evaluating files in Conjure."
+
+[[checks.steps]]
+send = { op = "clone", client-name = "Conjure" }
+new-session = "conjure"
+why = "Conjure gives up waiting after 10 seconds and evaluates code without a session, so nothing (e.g. *1 or *e) carries over from one evaluation to the next"
+refs = ["client/clojure/nrepl/server.fnl#L259-L272", "client/clojure/nrepl/server.fnl#L379-L392", "remote/nrepl.fnl#L48-L57"]
+
+[[checks.steps]]
+snippet = "value"
+why = "users don't see the result of the file"
+refs = ["client/clojure/nrepl/server.fnl#L154-L165", "client/clojure/nrepl/ui.fnl#L24-L50"]
+
+[checks.steps.send]
+op = "load-file"
+session = "$conjure"
+file-name = "conjure.clj"
+file-path = "/home/user/project/src/proof/conjure.clj"
+"nrepl.middleware.print/print" = "cider.nrepl.pprint/pprint"
+"nrepl.middleware.print/options" = { associative = 1, length = 500, level = 50, right-margin = 72 }

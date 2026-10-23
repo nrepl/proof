@@ -306,6 +306,6 @@ to have a single test suite that every server can be checked against.
 ## Future Plans
 
 At this point proof covers the core of the protocol (`describe`, unknown
-ops, sessions, `eval`, `stdin`, `interrupt` and the wire format), the requests of
+ops, sessions, `eval`, `stdin`, `interrupt`, `load-file` and the wire format), the requests of
 clients and the server differences clients have to deal with.
 [PLAN.md](../PLAN.md) has what's planned next.

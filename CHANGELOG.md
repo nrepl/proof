@@ -30,3 +30,5 @@ Initial release.
   CI of a server.
 - [#11](https://github.com/nrepl/proof/pull/11): Checks for `interrupt`, and
   scenarios for nREPL's interrupt bugs in `proof serve`.
+- [#12](https://github.com/nrepl/proof/pull/12): Checks for `load-file`, and
+  `load-file` in `proof serve`.
