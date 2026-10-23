@@ -63,6 +63,8 @@ type quirks struct {
 	dropQueued       bool // evals queued behind an interrupted one never run
 	interruptHere    bool // the interrupted eval's done goes to the interrupt's connection
 	diesOnInterrupt  bool // an interrupted session never answers again
+	noLoadFileOp     bool // there's no load-file op
+	loadFileNoValue  bool // load-file sends no value
 }
 
 var unknownSession = map[string]any{"status": []any{"error", "unknown-session", "done"}}
@@ -214,6 +216,9 @@ func (s *fakeServer) handle(c net.Conn, req nrepl.Message, local map[string]bool
 		if !q.noInterruptOp {
 			names = append(names, "interrupt")
 		}
+		if !q.noLoadFileOp {
+			names = append(names, "load-file")
+		}
 		var ops any
 		if q.opsList {
 			l := []any{}
@@ -239,7 +244,7 @@ func (s *fakeServer) handle(c net.Conn, req nrepl.Message, local map[string]bool
 				session = "7:session" + strconv.Itoa(len(sess)) + ":" + sess
 			}
 			c.Write([]byte("d6:statusl4:donee2:id" + strconv.Itoa(len(req.Str("id"))) + ":" + req.Str("id") +
-				"3:opsd8:describede4:evalde5:clonede5:closede5:stdinde9:interruptdee" + session +
+				"3:opsd8:describede4:evalde5:clonede5:closede5:stdinde9:interruptde9:load-filedee" + session +
 				"8:versionsd4:faked14:version-string3:1.0eee"))
 			return true
 		}
@@ -270,21 +275,32 @@ func (s *fakeServer) handle(c net.Conn, req nrepl.Message, local map[string]bool
 		s.stdin(c, req, local)
 	case "interrupt":
 		s.interrupt(c, req, local)
-	default:
-		switch {
-		case q.statusString:
-			s.send(c, req, map[string]any{"status": "done"})
-		case q.noUnknownOp:
-			s.send(c, req, map[string]any{"status": done})
-		default:
-			fields := map[string]any{"status": []any{"error", "unknown-op", "done"}}
-			if !q.noOpEcho {
-				fields["op"] = op
-			}
-			s.send(c, req, fields)
+	case "load-file":
+		if q.noLoadFileOp {
+			s.unknownOp(c, req)
+			break
 		}
+		// Like nREPL, an eval of what's in the file.
+		s.eval(c, req.With(nrepl.Message{"code": req["file"]}), local)
+	default:
+		s.unknownOp(c, req)
 	}
 	return true
+}
+
+func (s *fakeServer) unknownOp(c net.Conn, req nrepl.Message) {
+	switch {
+	case s.q.statusString:
+		s.send(c, req, map[string]any{"status": "done"})
+	case s.q.noUnknownOp:
+		s.send(c, req, map[string]any{"status": []any{"done"}})
+	default:
+		fields := map[string]any{"status": []any{"error", "unknown-op", "done"}}
+		if !s.q.noOpEcho {
+			fields["op"] = req.Str("op")
+		}
+		s.send(c, req, fields)
+	}
 }
 
 // stdin finishes an eval waiting for input, answering like Clojure's
@@ -487,7 +503,7 @@ func (s *fakeServer) eval(c net.Conn, req nrepl.Message, local map[string]bool) 
 				valueMsg["value"] = n
 			}
 		}
-		if q.lastValueOnly {
+		if q.lastValueOnly || q.loadFileNoValue && req.Str("op") == "load-file" {
 			if out != "" {
 				s.send(c, req, map[string]any{"out": out})
 			}

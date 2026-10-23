@@ -79,3 +79,30 @@ column = 1
 pprint = 1
 "nrepl.middleware.print/print" = "cider.nrepl.pprint/pprint"
 "nrepl.middleware.print/options" = { right-margin = 120, length = 50 }
+
+[[checks]]
+id = "calva.load-file"
+title = "Calva can load a file"
+why = "Loading a file sends what's in it with load-file, along with the file's path, copies of its name and path in fields of Calva's own and options for printing the value, so a server that can't handle them breaks loading files in Calva."
+
+[[checks.steps]]
+send = { op = "clone", client-name = "Calva", client-version = "2.0.599" }
+new-session = "calva"
+why = "Calva gives up connecting after 30 seconds"
+refs = ["nrepl/index.ts#L277-L286", "nrepl/index.ts#L243-L253"]
+
+[[checks.steps]]
+snippet = "value"
+why = "Calva says there were no results from the file"
+refs = ["nrepl/index.ts#L783-L817", "evaluate.ts#L786-L793"]
+
+[checks.steps.send]
+op = "load-file"
+session = "$calva"
+file-name = "calva.clj"
+file-path = "/home/user/project/src/proof/calva.clj"
+fileName = "calva.clj"
+filePath = "/home/user/project/src/proof/calva.clj"
+pprint = 1
+"nrepl.middleware.print/print" = "cider.nrepl.pprint/pprint"
+"nrepl.middleware.print/options" = { right-margin = 120, length = 50 }

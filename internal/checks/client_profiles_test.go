@@ -21,8 +21,7 @@ func TestClientProfiles(t *testing.T) {
 	}
 	pinned := regexp.MustCompile(`^https://github\.com/[^/]+/[^/]+/blob/[0-9a-f]{40}/`)
 	// The links in refs.go to the same clients.
-	bases := map[string]string{"CIDER": ciderBase, "Calva": strings.TrimSuffix(calvaBase, "nrepl/index.ts"),
-		"Conjure": strings.TrimSuffix(conjureBase, "client/clojure/nrepl/server.fnl"), "vim-fireplace": fireplaceBase,
+	bases := map[string]string{"CIDER": ciderBase, "Calva": calvaSrc, "Conjure": conjureSrc, "vim-fireplace": fireplaceBase,
 		"REPLy": strings.TrimSuffix(replyBase, "eval_modes/nrepl.clj")}
 	for _, p := range clientProfiles() {
 		if p.Name == "" || !pinned.MatchString(p.Code) {

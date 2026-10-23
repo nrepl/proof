@@ -50,6 +50,11 @@ uses `file-path`, but all the servers we've looked at expect `file` (the
 contents of the file), and some of them accept `file-path` and
 `file-name` as well.
 
+The spec doesn't say what a failed load looks like either, and clients
+tell it by different things: CIDER by `eval-error`, Calva only by `ex`
+(it reports a load without `ex` as a success) and Conjure only shows
+`err`. A failed load should have all three, just like a failed eval.
+
 ### Where `interrupted` Goes
 
 The spec's example reuses the `id` of the eval request for the interrupt

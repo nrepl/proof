@@ -130,10 +130,10 @@ snippet is missing, all the checks that need it are skipped.
 
 | Snippet | Options | What it should do | Checks that use it |
 |---|---|---|---|
-| `value` | `code`, `value` | evaluate to `value` | `eval.value`, `eval.survives-error`, `eval.ns`, `eval.unknown-ns`, `session.ephemeral`, `session.unknown`, `session.closed`, `cider.eval`, `cider.repl`, `calva.eval`, `conjure.eval`, `fireplace.eval`, `neorepl.eval` |
+| `value` | `code`, `value` | evaluate to `value` | `eval.value`, `eval.survives-error`, `eval.ns`, `eval.unknown-ns`, `session.ephemeral`, `session.unknown`, `session.closed`, `load-file.value`, `cider.eval`, `cider.repl`, `cider.load-file`, `calva.eval`, `calva.load-file`, `conjure.eval`, `conjure.load-file`, `fireplace.eval`, `neorepl.eval` |
 | `stdout` | `code`, `out` | print `out` to the standard output | `eval.stdout`, `eval.stdout-order` |
 | `stderr` | `code`, `err` | print `err` to the standard error | `eval.stderr` |
-| `throw` | `code` | raise an error | `eval.error-status`, `eval.error-report`, `eval.survives-error` |
+| `throw` | `code` | raise an error | `eval.error-status`, `eval.error-report`, `eval.survives-error`, `load-file.error` |
 | `define` | `code`, `use`, `value` | define something that `use` reads back as `value` | `session.persistent` |
 | `session-state` | `code`, `use`, `value` | leave some state in the session that `use` reads back as `value` | `session.across-connections`, `session.isolated` |
 | `multiple` | `code`, `values` | consist of several forms that evaluate to `values` (in order) | `eval.multiple-forms` |

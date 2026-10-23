@@ -116,3 +116,28 @@ column = 7
 "nrepl.middleware.print/buffer-size" = 4096
 "nrepl.middleware.print/options" = { right-margin = 70 }
 content-type = "true"
+
+[[checks]]
+id = "cider.load-file"
+title = "CIDER can load a buffer"
+why = "Loading a buffer (C-c C-k) sends what's in it with load-file, along with the buffer's path and options for printing the value, so a server that can't handle them breaks loading buffers in CIDER."
+
+[[checks.steps]]
+send = { op = "clone", client-name = "CIDER", client-version = "2.1.0-snapshot" }
+new-session = "repl"
+why = "CIDER gives up connecting"
+refs = ["nrepl-client.el#L749-L760"]
+
+[[checks.steps]]
+snippet = "value"
+why = "CIDER doesn't show the result and never marks the buffer as loaded"
+refs = ["cider-client.el#L799-L817", "cider-client.el#L572-L586", "cider-eval.el#L614-L635"]
+
+[checks.steps.send]
+op = "load-file"
+session = "$repl"
+file-path = "/home/user/project/src/proof/cider.clj"
+file-name = "cider.clj"
+"nrepl.middleware.print/print" = "cider.nrepl.pprint/pr"
+"nrepl.middleware.print/stream?" = []
+"nrepl.middleware.print/quota" = 1048576

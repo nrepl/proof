@@ -100,12 +100,14 @@ eval
 ```
 
 The checks in the `cider`, `calva`, `conjure`, `fireplace`, `reply` and
-`neorepl` groups send what those clients send while connecting and
-evaluating code, with all the extra fields they put in their requests.
+`neorepl` groups send what those clients send while connecting,
+evaluating code and loading files, with all the extra fields they put in
+their requests.
 If one of them fails, the client won't work properly with your server,
 and the report says what the client does with the reply it got (e.g.
 "CIDER gives up connecting"). The code they evaluate for the user is the
-`value` snippet of your profile. (REPLy sends nothing but the code and
+`value` snippet of your profile, which goes in a file for `load-file`.
+(REPLy sends nothing but the code and
 the session, so `eval.value` covers it.) Before evaluating code from a
 source file, CIDER, Calva and Conjure evaluate an `ns` form for the
 file's namespace, so those checks also need the `clojure` capability.
@@ -424,7 +426,9 @@ Other functions get the error Clojure gives for a symbol it can't
 resolve, and syntax proof doesn't read (e.g. sets or anonymous functions)
 gets a read error. That's enough for CIDER, Calva, Conjure and
 vim-fireplace to connect and work, and it's all you need for checking
-output, values, errors, input and interrupts.
+output, values, errors, input and interrupts. `load-file` evaluates
+what's in the file the same way, and like nREPL it sends only the value
+of the last form and stops at the first error.
 
 When you stop it, `proof serve` checks the requests your client sent,
 just like `proof proxy` does, with the same report, exit codes and

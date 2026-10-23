@@ -92,9 +92,12 @@ lookups and completions, plus requests that go wrong.
 
 ### load-file
 
-- Checks for `load-file` with the fields CIDER, Calva and Conjure send.
-  The spec and the servers don't agree on which field has the contents
-  of the file ([spec#3](https://github.com/nrepl/spec.nrepl.org/issues/3)).
+- Done: checks for the value of `load-file` and for a load that fails,
+  where CIDER needs `eval-error`, Calva `ex` and Conjure `err`, plus what
+  CIDER, Calva and Conjure send to load a file. The spec and the servers
+  don't agree on which field has the contents of the file
+  ([spec#3](https://github.com/nrepl/spec.nrepl.org/issues/3)), but every
+  server in the matrix takes `file` and passes them all.
 
 ### Lookups and Completions
 
