@@ -133,13 +133,9 @@ connecting and evaluating code, the requests
 clients send and the server differences clients have to deal with, and
 `proof list` will show you all the checks.
 
-Here's what's coming next:
-
-- checks for `interrupt`, `load-file`, `completions` and `lookup`
-- robustness checks (malformed messages, fields of the wrong type,
-  clients disconnecting in the middle of an evaluation)
-- publishing the compatibility matrix somewhere nicer than a CI job
-  summary
+Checks for `interrupt`, `load-file`, lookups, completions and malformed
+requests are coming next, along with the first release.
+[PLAN.md](PLAN.md) has all the details.
 
 ## Why "proof"?
 

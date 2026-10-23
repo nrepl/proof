@@ -305,16 +305,5 @@ to have a single test suite that every server can be checked against.
 
 At this point proof covers the core of the protocol (`describe`, unknown
 ops, sessions, `eval`, `stdin` and the wire format), the requests of
-clients and the server differences clients have to deal with. Here's
-what's planned next:
-
-- checks for `interrupt`, which every interactive client relies on
-- checks for `completions`, `lookup` and `load-file` (for servers that
-  support them)
-- robustness checks (malformed messages, fields of the wrong type, clients
-  disconnecting in the middle of an evaluation)
-- more servers in the compatibility matrix and a proper home for the
-  matrix itself
-- incorporating [Spec Changes](spec-changes.md) into the spec, so that
-  the spec and proof agree and proof can eventually be versioned together
-  with the spec
+clients and the server differences clients have to deal with.
+[PLAN.md](../PLAN.md) has what's planned next.
