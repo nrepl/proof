@@ -145,7 +145,7 @@ snippet is missing, all the checks that need it are skipped.
 | `session-state` | `code`, `use`, `value` | leave some state in the session that `use` reads back as `value` | `session.across-connections`, `session.isolated` |
 | `multiple` | `code`, `values` | consist of several forms that evaluate to `values` (in order) | `eval.multiple-forms` |
 | `read-line` | `code`, `value`, `eof` | read a line from stdin, evaluating to `value` when the line is `proof` and to `eof` at the end of input | `stdin.need-input`, `stdin.roundtrip`, `stdin.eof` |
-| `sleep` | `code`, `out` | print `out` and then keep running for longer than the `timeout` (e.g. a minute), so there's something to interrupt | all the `interrupt.*` checks |
+| `sleep` | `code`, `out` | print `out` and then keep running for longer than the `timeout` (e.g. a minute), so there's something to interrupt | all the `interrupt.*` checks, `robust.disconnect`, `robust.sessions-at-once` |
 | `completion` | `code`, `value` | `code` is the start of a name, which completes to `value` | all the `completion.*` checks |
 | `lookup` | `code` | `code` is the name of a function | `lookup.lookup`, `lookup.info`, `lookup.eldoc` |
 

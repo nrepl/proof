@@ -77,7 +77,12 @@ func TestChecksCatchMisbehaviour(t *testing.T) {
 	connects := map[string]check.Verdict{"cider.connect": F, "calva.connect": F, "conjure.connect": F, "fireplace.connect": F,
 		"neorepl.connect": F}
 	// The checks that can't tell whether the server has their op.
-	noInterrupts, noLoadFile := skipped(interruptChecks()), skipped(loadFileChecks())
+	noLoadFile := skipped(loadFileChecks())
+	// The interrupt checks, and the ones that interrupt the sleep snippet
+	// they start.
+	noInterrupts := skipped(slices.DeleteFunc(All(), func(c *check.Check) bool {
+		return !strings.HasPrefix(c.ID, "interrupt.") && !slices.Contains(c.Requires, "interrupt.running")
+	}))
 	noLookups := skipped(completionChecks(), lookupChecks())
 	// What CIDER, Calva and Conjure send to load a file.
 	clientsLoad := map[string]check.Verdict{"cider.load-file": F, "calva.load-file": F, "conjure.load-file": F}
@@ -103,12 +108,15 @@ func TestChecksCatchMisbehaviour(t *testing.T) {
 		// Only clients put dicts and lists in their requests.
 		// Conjure's complete has extra-metadata, a list.
 		{"flat fields only", quirks{flatFields: true}, checktest.Merged(clientsLoad, map[string]check.Verdict{"completion.complete-symbol": F,
-			"cider.connect": F, "cider.eval": F, "cider.repl": F, "calva.connect": F, "calva.eval": F, "conjure.eval": F,
+			"robust.wrong-types": F,
+			"cider.connect":      F, "cider.eval": F, "cider.repl": F, "calva.connect": F, "calva.eval": F, "conjure.eval": F,
 			"neorepl.eval": F})},
 		{"any session accepted", quirks{acceptAnySession: true}, map[string]check.Verdict{"session.unknown": F, "session.closed": F}},
-		{"shared session state", quirks{sharedState: true}, map[string]check.Verdict{"session.isolated": F}},
+		// One session, so one eval at a time.
+		{"shared session state", quirks{sharedState: true}, map[string]check.Verdict{"session.isolated": F,
+			"robust.sessions-at-once": F}},
 		{"sessions tied to sockets", quirks{socketSessions: true}, map[string]check.Verdict{"session.across-connections": W,
-			"interrupt.other-connection": S}},
+			"interrupt.other-connection": S, "robust.disconnect": S}},
 		{"no ephemeral sessions", quirks{noEphemeral: true}, map[string]check.Verdict{"session.ephemeral": F, "fireplace.connect": F}},
 		{"last value only", quirks{lastValueOnly: true}, map[string]check.Verdict{"eval.multiple-forms": F, "fireplace.connect": F}},
 		{"stderr dropped", quirks{dropErr: true}, map[string]check.Verdict{"eval.stderr": F}},
@@ -135,7 +143,8 @@ func TestChecksCatchMisbehaviour(t *testing.T) {
 		{"integer value", quirks{intValue: true}, checktest.Merged(clientsLoad, map[string]check.Verdict{
 			"wire.field-types": F, "eval.value": F, "eval.survives-error": F, "eval.multiple-forms": F,
 			"session.ephemeral": F, "session.persistent": F, "cider.eval": F, "cider.repl": F, "calva.eval": F, "conjure.eval": F, "fireplace.eval": F,
-			"neorepl.eval": F, "interrupt.survives": F, "interrupt.queued": F, "load-file.value": F})},
+			"neorepl.eval": F, "interrupt.survives": F, "interrupt.queued": F, "load-file.value": F, "robust.wrong-types": W,
+			"robust.disconnect": F, "robust.sessions-at-once": F, "robust.bad-frames": F})},
 		{"unsorted keys", quirks{unsortedKeys: true}, map[string]check.Verdict{"wire.canonical": W}},
 		{"invalid UTF-8", quirks{badUTF8: true}, map[string]check.Verdict{"wire.utf8": W, "eval.stdout": F}},
 		{"no stdin op", quirks{noStdinOp: true}, map[string]check.Verdict{
@@ -158,7 +167,13 @@ func TestChecksCatchMisbehaviour(t *testing.T) {
 		// The interrupt's connection never sent the eval.
 		{"interrupted on the wrong connection", quirks{interruptHere: true}, map[string]check.Verdict{
 			"interrupt.other-connection": F, "wire.id": W}},
-		{"session dies on interrupt", quirks{diesOnInterrupt: true}, map[string]check.Verdict{"interrupt.survives": F, "interrupt.queued": F}},
+		{"session dies on interrupt", quirks{diesOnInterrupt: true}, map[string]check.Verdict{"interrupt.survives": F, "interrupt.queued": F,
+			"robust.disconnect": F}},
+		{"garbage takes the server down", quirks{crashOnGarbage: true}, map[string]check.Verdict{"robust.bad-frames": F}},
+		// The eval never gets its done, which fails even a warning.
+		{"wrong types kill the session", quirks{typesKill: true}, map[string]check.Verdict{"robust.wrong-types": F}},
+		{"a session dies with its client", quirks{diesOnDisconnect: true}, map[string]check.Verdict{"robust.disconnect": F}},
+		{"one eval at a time", quirks{oneEvalAtATime: true}, map[string]check.Verdict{"robust.sessions-at-once": F}},
 		// CIDER and Conjure send load-file without asking, and so does
 		// Calva's profile, as it can't load files either way.
 		{"no load-file op", quirks{noLoadFileOp: true}, checktest.Merged(noLoadFile, clientsLoad)},

@@ -170,7 +170,12 @@ See the decisions above.
 - Handling of malformed input - broken messages, top-level values that
   aren't dictionaries and fields of the wrong type. In
   [nrepl#477](https://github.com/nrepl/nrepl/issues/477) such a request
-  kills the session thread and later evals never get a `done`.
+  kills the session thread and later evals never get a `done`, and a
+  bencode string on its own takes jank down.
+- What happens to a session whose client goes away in the middle of an
+  eval. It should keep working for the next client
+  ([babashka#2227](https://github.com/babashka/babashka/issues/2227)),
+  and evals in other sessions shouldn't have to wait for it.
 - How the JSON in the examples maps to bencode. There are no nil or
   boolean values in bencode, so servers shouldn't try to send them
   ([nrepl#196](https://github.com/nrepl/nrepl/issues/196),

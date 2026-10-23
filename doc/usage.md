@@ -390,8 +390,10 @@ servers. There are a couple of exceptions. No scenario covers
 `eval.no-code`, as clients always send some code, and the code is still
 Clojure, even with `-like dialtone`. So the checks the profiles of
 dialtone and repartee skip for their languages (e.g. `eval.ns`) pass.
-And the completions and lookups of `proof serve` are always nREPL's
-(`completions` and `lookup`), whatever server it acts like.
+The completions and lookups of `proof serve` are always nREPL's
+(`completions` and `lookup`), whatever server it acts like, and it
+doesn't hang or crash where other servers do (see the `robust.*`
+checks).
 
 Most scenarios change only how the replies look on the wire, not what a
 user should end up seeing. Evaluating `(println "hi") (+ 1 2)` should

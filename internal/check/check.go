@@ -12,6 +12,8 @@ package check
 import (
 	"errors"
 	"fmt"
+	"io"
+	"net"
 	"runtime"
 	"slices"
 	"sort"
@@ -125,13 +127,57 @@ func (t *T) Snippet(name string) profile.Snippet {
 
 // Connect opens a new connection, stopping the check if it can't.
 func (t *T) Connect() *nrepl.Conn {
-	c, err := nrepl.Dial(t.env.Addr, 5*time.Second)
+	c, err := t.TryConnect()
 	if err != nil {
 		t.harnessErr = fmt.Sprintf("couldn't connect to %s: %v", t.env.Addr, err)
 		t.exit()
 	}
-	t.conns = append(t.conns, c)
 	return c
+}
+
+// SendRaw sends bytes that aren't a request (or not a whole one) on a
+// connection of their own, and closes it once the server had its say. The
+// wire rules don't see that connection, as a server can't get its replies
+// to them right (e.g. there's no id to echo).
+func (t *T) SendRaw(b []byte) error {
+	nc, err := net.DialTimeout("tcp", t.env.Addr, 5*time.Second)
+	if err != nil {
+		return err
+	}
+	defer nc.Close()
+	if _, err := nc.Write(b); err != nil {
+		return err
+	}
+	// Until the server closes the connection, or goes quiet waiting for
+	// more.
+	nc.SetReadDeadline(time.Now().Add(t.settleTime()))
+	io.Copy(io.Discard, nc)
+	return nil
+}
+
+// Settle gives the server a moment to notice something it doesn't reply
+// to, e.g. a client going away. It's as long as connections settle for
+// after a check.
+func (t *T) Settle() {
+	time.Sleep(t.settleTime())
+}
+
+func (t *T) settleTime() time.Duration {
+	if t.env.Settle == 0 {
+		return defaultSettle
+	}
+	return t.env.Settle
+}
+
+// TryConnect opens a new connection, for checks that want to know whether
+// the server still takes them.
+func (t *T) TryConnect() (*nrepl.Conn, error) {
+	c, err := nrepl.Dial(t.env.Addr, 5*time.Second)
+	if err != nil {
+		return nil, err
+	}
+	t.conns = append(t.conns, c)
+	return c, nil
 }
 
 // Request sends m and waits for "done". A request that never finishes
@@ -244,10 +290,13 @@ type Result struct {
 
 // Run runs checks one at a time, then grades the wire traffic they
 // produced against the wire rules.
+// defaultSettle is how long connections settle when Env doesn't say.
+const defaultSettle = 100 * time.Millisecond
+
 func Run(env *Env, checks []*Check, rules []*Rule) []Result {
 	settle := env.Settle
 	if settle == 0 {
-		settle = 100 * time.Millisecond
+		settle = defaultSettle
 	}
 	results := make([]Result, len(checks))
 	conns := make([][]*nrepl.Conn, len(checks))

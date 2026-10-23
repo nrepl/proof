@@ -34,3 +34,6 @@ Initial release.
   `load-file` in `proof serve`.
 - [#13](https://github.com/nrepl/proof/pull/13): Checks for completions and
   lookups, and nREPL's `completions` and `lookup` in `proof serve`.
+- [#14](https://github.com/nrepl/proof/pull/14): Checks for requests that go
+  wrong: frames that aren't requests, fields of the wrong type and clients
+  that go away in the middle of an eval.
