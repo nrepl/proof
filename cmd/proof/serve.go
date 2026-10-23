@@ -8,7 +8,6 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
-	"slices"
 	"strings"
 	"syscall"
 	"time"
@@ -23,8 +22,7 @@ type serveOptions struct {
 }
 
 func serveFlags(out io.Writer, o *serveOptions) *flag.FlagSet {
-	fs := flag.NewFlagSet("serve", flag.ContinueOnError)
-	fs.SetOutput(out)
+	fs := newFlags("serve", "[SCENARIO...]", out)
 	fs.StringVar(&o.like, "like", "", "behave like the server whose `profile` has this name (e.g. jank or profiles/jank.toml), along with any scenarios given")
 	o.register(fs)
 	return fs
@@ -45,18 +43,13 @@ func serveUntil(ctx context.Context, args []string, stdout, stderr io.Writer, li
 	stderr = &syncWriter{w: stderr}
 	var o serveOptions
 	fs := serveFlags(stderr, &o)
-	if err := fs.Parse(args); err != nil {
-		return 2
+	scenarios, err := parseArgs(fs, args)
+	if err != nil {
+		return flagStatus(err)
 	}
-	scenarios, shown := fs.Args(), fs.Args()
-	// The flag package stops at the first scenario.
-	if i := slices.IndexFunc(scenarios, func(s string) bool { return strings.HasPrefix(s, "-") }); i >= 0 {
-		fmt.Fprintf(stderr, "proof: %s comes after a scenario, but flags have to go first\n", scenarios[i])
-		return 2
-	}
+	shown := scenarios
 	if o.like != "" {
 		name := strings.TrimSuffix(filepath.Base(o.like), ".toml")
-		var err error
 		if scenarios, err = serve.Like(name, scenarios); err != nil {
 			fmt.Fprintln(stderr, "proof:", err)
 			return 2

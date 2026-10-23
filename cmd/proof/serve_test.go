@@ -26,7 +26,9 @@ func TestServeExitCodes(t *testing.T) {
 			"client traffic to proof serve (like jank)"},
 		{"like a server, but not quite", []string{"-like", "jank", "ns-error"}, nil, 2,
 			"scenarios ns-fallback and ns-error don't go together"},
-		{"flag after the scenarios", []string{"byte-writes", "-like", "jank"}, nil, 2, "-like comes after a scenario, but flags have to go first"},
+		{"flag after the scenarios", []string{"byte-writes", "-like", "jank"}, []string{"d2:id1:12:op8:describee"}, 0,
+			"client traffic to proof serve (like jank, byte-writes)"},
+		{"help", []string{"-h"}, nil, 0, "Usage: proof serve [flags] [SCENARIO...]"},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
