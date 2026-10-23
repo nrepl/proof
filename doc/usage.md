@@ -365,6 +365,9 @@ the scenarios, and every one of them is something a real server does
 | `ns-fallback` | An eval in a namespace that doesn't exist runs in the current one | jank |
 | `ns-error` | An eval in a namespace that doesn't exist fails without `namespace-not-found` | Basilisp |
 | `eof-error` | Reading past the end of input fails instead of returning `nil` | nREPL 1.7.0 |
+| `late-exception` | An interrupted eval's exception comes after its `done`, and the rest of its code still runs | nREPL 1.8.0 and Babashka |
+| `drop-queued` | Evals waiting for one that gets interrupted never run | nREPL 1.8.0 and Babashka |
+| `interrupt-elsewhere` | An interrupted eval's `done` goes to the connection the interrupt came from | nREPL 1.8.0 and Babashka |
 | `unsorted-keys` | The keys of reply dicts aren't sorted | jank |
 | `byte-writes` | Replies are written a byte at a time | any server |
 | `batched-writes` | Replies are held back and written together until the eval waits or ends | any server |
@@ -396,7 +399,9 @@ once for every scenario.
 
 proof can't evaluate real Clojure, of course. Instead it understands just
 enough of it for tests, and gives the same replies as nREPL 1.8.0 does
-for the same code:
+for the same code. The only exceptions are nREPL's bugs around
+interrupts (`late-exception`, `drop-queued` and `interrupt-elsewhere`),
+which you get with `-like clojure`:
 
 | Code | What it does |
 |---|---|

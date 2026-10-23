@@ -133,8 +133,9 @@ Here's what each of its fields means:
 | `Snippets`, `Needs` | The snippets and capabilities the check uses. Checks are skipped when the profile doesn't provide them. `t.Snippet` panics if a check uses a snippet that it didn't declare, which the tests catch, so the two can't get out of sync. |
 | `Requires` | The checks this check depends on. Everything that creates a session requires `session.clone`, and everything that looks at the response of `describe` requires `describe.reply`. |
 
-Checks are grouped by area in `describe.go`, `op.go`, `session.go` and
-`eval.go`, and they run in the order listed in `all.go`. If you're adding
+Checks are grouped by area in `describe.go`, `op.go`, `session.go`,
+`eval.go`, `stdin.go` and `interrupt.go`, and they run in the order
+listed in `all.go`. If you're adding
 a new area, put its checks in a new file and add them to `all.go`.
 
 In `Run` a check talks to the server via `t`:

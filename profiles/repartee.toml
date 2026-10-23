@@ -39,3 +39,8 @@ value = ":proof_marker"
 code = 'IO.gets("")'
 value = '"proof\n"'
 eof = ":eof"
+
+# Prints something and then runs until it's interrupted.
+[snippets.sleep]
+code = 'IO.write("proof"); Process.sleep(60_000)'
+out = "proof"

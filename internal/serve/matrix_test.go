@@ -53,6 +53,18 @@ func runChecksAs(t *testing.T, server string, scenarios ...string) map[string]ch
 	return checktest.ByID(check.Run(env, checks.All(), checks.WireRules()))
 }
 
+// noInterrupts is what the interrupt checks get from servers without the
+// op: skipped.
+var noInterrupts = func() map[string]check.Verdict {
+	v := map[string]check.Verdict{}
+	for _, c := range checks.All() {
+		if strings.HasPrefix(c.ID, "interrupt.") {
+			v[c.ID] = check.Skipped
+		}
+	}
+	return v
+}()
+
 func TestPassesEveryServerCheck(t *testing.T) {
 	checktest.Verdicts(t, runChecks(t), nil)
 }
@@ -75,17 +87,22 @@ func TestScenariosGetTheVerdictsOfTheirServers(t *testing.T) {
 		{[]string{"error-with-done"}, nil},
 		{[]string{"no-op-echo"}, map[string]check.Verdict{"op.unknown-echo": W}},
 		{[]string{"no-close-op"}, map[string]check.Verdict{"describe.required-ops": F}},
-		{[]string{"no-interrupt"}, nil},
+		{[]string{"no-interrupt"}, noInterrupts},
 		{[]string{"no-stdin"}, noStdin},
 		{[]string{"read-line-throws"}, noStdin},
 		{[]string{"string-versions"}, nil},
 		{[]string{"no-session-closed"}, map[string]check.Verdict{"session.close": F}},
 		{[]string{"shared-state"}, map[string]check.Verdict{"session.isolated": F}},
-		{[]string{"socket-sessions"}, map[string]check.Verdict{"session.across-connections": W}},
+		{[]string{"socket-sessions"}, map[string]check.Verdict{"session.across-connections": W,
+			"interrupt.other-connection": S}},
 		{[]string{"any-session"}, map[string]check.Verdict{"session.unknown": F, "session.closed": F}},
 		{[]string{"ns-fallback"}, map[string]check.Verdict{"eval.unknown-ns": F}},
 		{[]string{"ns-error"}, map[string]check.Verdict{"eval.unknown-ns": F}},
 		{[]string{"eof-error"}, map[string]check.Verdict{"stdin.eof": W}},
+		{[]string{"late-exception"}, map[string]check.Verdict{"wire.after-done": W}},
+		{[]string{"drop-queued"}, map[string]check.Verdict{"interrupt.queued": F}},
+		// The interrupt's connection never sent the eval.
+		{[]string{"interrupt-elsewhere"}, map[string]check.Verdict{"interrupt.other-connection": F, "wire.id": W}},
 		{[]string{"unsorted-keys"}, map[string]check.Verdict{"wire.canonical": W}},
 		{[]string{"byte-writes"}, nil},
 		{[]string{"batched-writes"}, nil},
@@ -106,16 +123,18 @@ func TestPresetsGetTheColumnsOfTheirServers(t *testing.T) {
 	noJava := map[string]check.Verdict{"fireplace.connect": S, "fireplace.eval": S}
 	noLanguage := map[string]check.Verdict{"eval.ns": S, "eval.unknown-ns": S, "cider.eval": S, "calva.eval": S,
 		"conjure.eval": S}
+	nreplInterrupts := map[string]check.Verdict{"interrupt.queued": F, "interrupt.other-connection": F, "wire.id": W,
+		"wire.after-done": W}
 	columns := map[string]map[string]check.Verdict{
-		"clojure":  nil,
-		"babashka": nil,
-		"clojure-clr": checktest.Merged(noJava, map[string]check.Verdict{"op.unknown-echo": W, "session.across-connections": W,
+		"clojure":  nreplInterrupts,
+		"babashka": nreplInterrupts,
+		"clojure-clr": checktest.Merged(noJava, noInterrupts, map[string]check.Verdict{"op.unknown-echo": W, "session.across-connections": W,
 			"session.isolated": F, "session.unknown": F, "session.closed": F, "stdin.need-input": S,
 			"stdin.roundtrip": S, "stdin.eof": S}),
-		"basilisp": checktest.Merged(noJava, map[string]check.Verdict{"op.unknown-echo": W, "session.across-connections": W,
+		"basilisp": checktest.Merged(noJava, noInterrupts, map[string]check.Verdict{"op.unknown-echo": W, "session.across-connections": W,
 			"session.isolated": F, "session.close": F, "session.unknown": F, "session.closed": F, "eval.stderr": F,
 			"eval.multiple-forms": F, "eval.unknown-ns": F, "stdin.need-input": S, "stdin.roundtrip": S, "stdin.eof": S}),
-		"jank": checktest.Merged(noJava, map[string]check.Verdict{"describe.required-ops": F, "op.unknown-echo": W,
+		"jank": checktest.Merged(noJava, noInterrupts, map[string]check.Verdict{"describe.required-ops": F, "op.unknown-echo": W,
 			"session.across-connections": W, "session.isolated": F, "session.close": F, "session.unknown": F,
 			"session.closed": F, "eval.multiple-forms": F, "eval.unknown-ns": F, "stdin.need-input": S,
 			"stdin.roundtrip": S, "stdin.eof": S, "wire.canonical": W}),

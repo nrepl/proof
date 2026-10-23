@@ -17,6 +17,7 @@ const (
 	specBase      = "https://github.com/nrepl/spec.nrepl.org/blob/67796e34ac34f2f28c3af685fc3ab432fe5eb03f/spec.md"
 	replyBase     = "https://github.com/trptcolin/reply/blob/2ee3e3a193e9df62d5dc965d25efd0521a289b70/src/clj/reply/eval_modes/nrepl.clj"
 	rebelBase     = "https://github.com/bhauman/rebel-readline/blob/d8573a61aad5cbbd83532e2050b6595cfb5b13bb/rebel-readline-nrepl/src/rebel_readline/nrepl/service/nrepl.clj"
+	neoreplBase   = "https://github.com/nrepl/neorepl/blob/462a182c885ff56d65acfc73ad1fa92f02fc7181/src/neorepl/"
 	bbNreplBase   = "https://github.com/babashka/babashka.nrepl/blob/fb44874128d8cc2622f164e6a499ed4f00e5aae9/src/babashka/nrepl/"
 	basilispBase  = "https://github.com/basilisp-lang/basilisp/blob/2f993f9e53b4195316426140384c38728304341e/src/basilisp/contrib/nrepl_server.lpy"
 )
@@ -64,6 +65,16 @@ var (
 	specClone          = ref("spec: clone op", specBase+"#L359-L389")
 	specClose          = ref("spec: close op", specBase+"#L390-L414")
 	specStdin          = ref("spec: stdin op", specBase+"#L186-L215")
+	specInterrupt      = ref("spec: interrupt op", specBase+"#L222-L248")
+	nreplInterrupt     = ref("nREPL interrupt replies", nreplBase+"middleware/session.clj#L277-L296")
+	ciderInterrupt     = ref("CIDER interrupts every pending request", ciderBase+"cider-client.el#L625-L639")
+	ciderInterrupted   = ref("CIDER says the eval was interrupted", ciderBase+"cider-eval.el#L265-L267")
+	ciderReplPrompt    = ref("CIDER shows the REPL's next prompt at done", ciderBase+"cider-repl.el#L1363-L1366")
+	ciderSpinner       = ref("CIDER stops its spinner at done", ciderBase+"cider-client.el#L105-L117")
+	calvaInterrupted   = ref("Calva settles an eval only at its done", calvaBase+"#L1504-L1527")
+	conjureInterrupt   = ref("Conjure interrupts without interrupt-id", "https://github.com/Olical/conjure/blob/9842bf38464df071f72546f65fa6ec44942ca7b2/fnl/conjure/client/clojure/nrepl/action.fnl#L260-L297")
+	fireplaceInterrupt = ref("vim-fireplace interrupts on Ctrl-C and goes on in the same session", fireplaceBase+"fireplace.vim#L1346-L1369")
+	neoreplInterrupt   = ref("neorepl interrupt stops an eval from another process", neoreplBase+"main.clj#L374-L385")
 	ciderNeedInput     = ref("CIDER need-input handling", ciderBase+"nrepl-client.el#L948-L950")
 	nreplStdinEOF      = ref("nREPL treats an empty stdin as EOF", nreplBase+"middleware/session.clj#L386-L396")
 

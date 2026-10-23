@@ -54,6 +54,25 @@ type quirks struct {
 	eofError         bool // an empty stdin fails the read
 	dropStdin        bool // stdin input never reaches the read
 	flatFields       bool // a request with a dict or list in it kills the connection
+	noInterruptOp    bool // describe doesn't list interrupt
+	interruptIgnored bool // interrupt says done, but the eval goes on
+	noInterrupted    bool // an interrupted eval ends with a plain done
+	noSessionIdle    bool // interrupting an idle session gets a plain done
+	anyInterruptID   bool // interrupt stops the running eval, whatever its interrupt-id
+	needsInterruptID bool // an interrupt without interrupt-id leaves the running eval alone
+	dropQueued       bool // evals queued behind an interrupted one never run
+	interruptHere    bool // the interrupted eval's done goes to the interrupt's connection
+	diesOnInterrupt  bool // an interrupted session never answers again
+}
+
+var unknownSession = map[string]any{"status": []any{"error", "unknown-session", "done"}}
+
+// fakeRun is an eval that runs until it's interrupted, on the connection
+// it came from.
+type fakeRun struct {
+	c     net.Conn
+	req   nrepl.Message
+	local map[string]bool
 }
 
 type fakeSession struct {
@@ -61,6 +80,11 @@ type fakeSession struct {
 	vars map[string]string
 	// pending is an eval waiting for stdin.
 	pending nrepl.Message
+	// running is the eval that runs until it's interrupted, and queue the
+	// evals waiting for it to finish.
+	running *fakeRun
+	queue   []fakeRun
+	dead    bool
 }
 
 type fakeServer struct {
@@ -187,6 +211,9 @@ func (s *fakeServer) handle(c net.Conn, req nrepl.Message, local map[string]bool
 		if !q.noStdinOp {
 			names = append(names, "stdin")
 		}
+		if !q.noInterruptOp {
+			names = append(names, "interrupt")
+		}
 		var ops any
 		if q.opsList {
 			l := []any{}
@@ -212,7 +239,7 @@ func (s *fakeServer) handle(c net.Conn, req nrepl.Message, local map[string]bool
 				session = "7:session" + strconv.Itoa(len(sess)) + ":" + sess
 			}
 			c.Write([]byte("d6:statusl4:donee2:id" + strconv.Itoa(len(req.Str("id"))) + ":" + req.Str("id") +
-				"3:opsd8:describede4:evalde5:clonede5:closede5:stdindee" + session +
+				"3:opsd8:describede4:evalde5:clonede5:closede5:stdinde9:interruptdee" + session +
 				"8:versionsd4:faked14:version-string3:1.0eee"))
 			return true
 		}
@@ -242,8 +269,7 @@ func (s *fakeServer) handle(c net.Conn, req nrepl.Message, local map[string]bool
 	case "stdin":
 		s.stdin(c, req, local)
 	case "interrupt":
-		// Nothing runs long enough to be interrupted.
-		s.send(c, req, map[string]any{"status": []any{"session-idle", "done"}})
+		s.interrupt(c, req, local)
 	default:
 		switch {
 		case q.statusString:
@@ -285,11 +311,71 @@ func (s *fakeServer) stdin(c net.Conn, req nrepl.Message, local map[string]bool)
 	s.send(c, req, map[string]any{"status": []any{"done"}})
 }
 
+// interrupt stops the eval running in the session, like nREPL: the eval
+// gets done and interrupted, then the interrupt gets its done, and the
+// evals waiting for the session run after that.
+func (s *fakeServer) interrupt(c net.Conn, req nrepl.Message, local map[string]bool) {
+	q := s.q
+	sess, ok := s.session(req, local)
+	if !ok {
+		s.send(c, req, unknownSession)
+		return
+	}
+	s.mu.Lock()
+	run := sess.running
+	// status is the reply of an interrupt that leaves the session as it is.
+	var status []any
+	switch {
+	case run == nil && q.noSessionIdle:
+		status = []any{"done"}
+	case run == nil:
+		status = []any{"done", "session-idle"}
+	case req.Has("interrupt-id") && req.Str("interrupt-id") != run.req.Str("id") && !q.anyInterruptID:
+		status = []any{"done", "interrupt-id-mismatch", "error"}
+	case !req.Has("interrupt-id") && q.needsInterruptID, q.interruptIgnored:
+		status = []any{"done"}
+	}
+	if status != nil {
+		s.mu.Unlock()
+		s.send(c, req, map[string]any{"status": status})
+		return
+	}
+	sess.running = nil
+	queue := sess.queue
+	sess.queue = nil
+	sess.dead = q.diesOnInterrupt
+	s.mu.Unlock()
+	to, status := run.c, []any{"done", "interrupted"}
+	if q.interruptHere {
+		to = c
+	}
+	if q.noInterrupted {
+		status = []any{"done"}
+	}
+	s.send(to, run.req, map[string]any{"status": status})
+	s.send(c, req, map[string]any{"status": []any{"done"}})
+	if !q.dropQueued {
+		for _, r := range queue {
+			s.eval(r.c, r.req, r.local)
+		}
+	}
+}
+
 func (s *fakeServer) eval(c net.Conn, req nrepl.Message, local map[string]bool) {
 	q := s.q
 	sess, ok := s.session(req, local)
 	if !ok {
-		s.send(c, req, map[string]any{"status": []any{"error", "unknown-session", "done"}})
+		s.send(c, req, unknownSession)
+		return
+	}
+	s.mu.Lock()
+	busy := sess.running != nil
+	if busy {
+		sess.queue = append(sess.queue, fakeRun{c, req, local})
+	}
+	skip := busy || sess.dead
+	s.mu.Unlock()
+	if skip {
 		return
 	}
 	code, hasCode := req["code"].(string)
@@ -360,6 +446,13 @@ func (s *fakeServer) eval(c net.Conn, req nrepl.Message, local map[string]bool) 
 				s.send(c, req, map[string]any{"changed-namespaces": map[string]any{}})
 			}
 			finish()
+			return
+		case "sleep":
+			// Running before it says so, so an interrupt can't miss it.
+			s.mu.Lock()
+			sess.running = &fakeRun{c, req, local}
+			s.mu.Unlock()
+			s.send(c, req, map[string]any{"out": "proof"})
 			return
 		case "define":
 			sess.vars["answer"] = "42"

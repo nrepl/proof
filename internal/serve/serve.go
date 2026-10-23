@@ -377,9 +377,16 @@ func (s *Server) interrupt(c *conn, req nrepl.Message, sess *session) {
 		c.reply(req, map[string]any{"status": []any{"session-idle", "done"}})
 		return
 	}
+	if s.b.dropQueued {
+		sess.dropJobs()
+	}
 	// Like nREPL, this tells the eval it's done before telling the
 	// interrupt, and the code finds out about it after that.
-	j.c.reply(j.req, map[string]any{"status": []any{"done", "interrupted"}})
+	to := j.c
+	if s.b.interruptElsewhere {
+		to = c
+	}
+	to.reply(j.req, map[string]any{"status": []any{"done", "interrupted"}})
 	c.reply(req, map[string]any{"status": done})
 	signal(j.interrupts)
 }
@@ -444,7 +451,14 @@ func (s *Server) run(sess *session) {
 
 func (s *Server) runEval(sess *session, j *job) {
 	c, req := j.c, j.req
-	reply := func(fields map[string]any) { c.reply(req, fields) }
+	// An interrupt ends the eval, and says so itself. In late-exception the
+	// rest of the eval still runs and has its say, as on nREPL.
+	stopped := func() bool { return !s.b.lateException && sess.interrupted(j) }
+	reply := func(fields map[string]any) {
+		if !stopped() {
+			c.reply(req, fields)
+		}
+	}
 	if s.b.emptyMessages {
 		reply(nil)
 	}
@@ -492,7 +506,7 @@ func (s *Server) runEval(sess *session, j *job) {
 	// held is the value last-value sends at the end.
 	var held map[string]any
 	rd := &reader{src: req.Str("code")}
-	for {
+	for !stopped() {
 		form, err := rd.next()
 		if err == io.EOF {
 			break
@@ -505,6 +519,10 @@ func (s *Server) runEval(sess *session, j *job) {
 			return
 		}
 		if err != nil {
+			if stopped() {
+				// What the interrupt made the code throw.
+				break
+			}
 			t := err.(*thrown)
 			sess.b.failed(t.ex)
 			final, held = s.fail(reply, t, e.ns), nil
