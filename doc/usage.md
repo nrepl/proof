@@ -40,6 +40,11 @@ closest to your server. If you're working on a Clojure dialect you can
 probably use `clojure.toml` almost as is, otherwise `dialtone.toml` is a
 better starting point.
 
+The profiles in this folder come with proof, so you can also use them by
+name instead of passing a file (e.g. `proof run babashka`). If you've
+made a copy of one of them, pass its path instead (e.g. `proof run
+babashka.toml`).
+
 Here's a minimal profile:
 
 ```toml
@@ -202,7 +207,7 @@ proof:
 with one row per check and one column per server:
 
 ```shell
-$ proof run -json clojure.json profiles/clojure.toml
+$ proof run -json clojure.json clojure
 $ proof run -json my-server.json my-server.toml
 $ proof matrix clojure.json my-server.json > matrix.md
 ```
@@ -224,7 +229,7 @@ running) and forwards everything between your client and the server,
 recording every message on the way:
 
 ```shell
-$ proof proxy -listen 127.0.0.1:7888 profiles/clojure.toml
+$ proof proxy -listen 127.0.0.1:7888 clojure
 Starting Clojure (nrepl/nrepl 1.8.0)...
 Forwarding 127.0.0.1:7888 to localhost:53613. Connect your client to 127.0.0.1:7888 and press Ctrl-C when it's done.
 ```
@@ -265,8 +270,8 @@ the chance.
 
 It's a good idea to try your client with a few servers, as they don't
 all support the same ops. Any profile from the [profiles](../profiles)
-folder will do, and with `-address` proof will forward your client to a
-server that's already running:
+folder will do (e.g. `proof proxy babashka`), and with `-address` proof
+will forward your client to a server that's already running:
 
 ```shell
 $ proof proxy -address localhost:1667
@@ -290,7 +295,7 @@ the proxy in the background, wait for it to accept connections, run the
 tests against it and stop it with `SIGINT`:
 
 ```shell
-proof proxy -listen 127.0.0.1:7888 profiles/babashka.toml &
+proof proxy -listen 127.0.0.1:7888 babashka &
 proxy=$!
 until nc -z 127.0.0.1 7888; do
   kill -0 $proxy || exit 2

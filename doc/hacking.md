@@ -35,6 +35,10 @@ $ bin/proof run profiles/babashka.toml
 $ bin/proof run profiles/clojure.toml
 ```
 
+Note that `bin/proof run clojure` would use the copy of the profile
+that's embedded in the binary, so while you're working on a profile it's
+best to pass its path.
+
 ## Codebase Overview
 
 | Path | Contents |
@@ -50,7 +54,7 @@ $ bin/proof run profiles/clojure.toml
 | `internal/proxy` | Forwarding the traffic between a client and a server, for `proof proxy`. |
 | `internal/serve` | The server behind `proof serve`: its piece of Clojure (`lang.go` and `eval.go`), the scenarios (`scenarios.go`), sessions (`session.go`) and the server itself (`serve.go`). |
 | `internal/report` | Text and JSON reports and the compatibility matrix. |
-| `profiles` | The profiles for the servers in the compatibility matrix. |
+| `profiles` | The profiles for the servers in the compatibility matrix. `profiles/profiles.go` embeds them in the binary, so they can be used by name. |
 | `doc/spec-changes.md` | All the gaps and disagreements found in the draft spec. |
 
 ## Testing
