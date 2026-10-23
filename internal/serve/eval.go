@@ -93,6 +93,11 @@ func (d *definitions) lookup(qualified string) (any, bool) {
 	return v, ok
 }
 
+func (d *definitions) has(qualified string) bool {
+	_, ok := d.lookup(qualified)
+	return ok
+}
+
 func (d *definitions) define(qualified string, v any) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
@@ -248,16 +253,19 @@ func (e *evaluation) resolve(name string) (any, error) {
 	return nil, compileError("", "Unable to resolve symbol: %s in this context", name)
 }
 
-// qualify names the var a symbol refers to: clojure.core's if it has one
-// by that name, and otherwise one in the current namespace.
-func (e *evaluation) qualify(name string) string {
+// qualify names the var a symbol refers to in the current namespace.
+func (e *evaluation) qualify(name string) string { return qualifyIn(e.ns, name) }
+
+// qualifyIn names the var a symbol refers to in ns: clojure.core's if it
+// has one by that name, and otherwise one in ns.
+func qualifyIn(ns, name string) string {
 	switch {
 	case qualified(name):
 		return name
 	case builtins[name] != nil:
 		return "clojure.core/" + name
 	}
-	return e.ns + "/" + name
+	return ns + "/" + name
 }
 
 // qualified reports whether a symbol names its namespace (like

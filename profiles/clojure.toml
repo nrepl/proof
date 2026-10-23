@@ -52,3 +52,12 @@ eof = "nil"
 [snippets.sleep]
 code = '(do (print "proof") (flush) (Thread/sleep 60000))'
 out = "proof"
+
+# A prefix, and something it completes to.
+[snippets.completion]
+code = "printl"
+value = "println"
+
+# A function to look up.
+[snippets.lookup]
+code = "println"

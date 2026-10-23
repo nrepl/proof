@@ -91,13 +91,22 @@ func needInput(id string) func(nrepl.Message) bool {
 	return func(m nrepl.Message) bool { return m.Str("id") == id && m.HasStatus("need-input") }
 }
 
-// requireOp skips the check unless describe lists op.
-func requireOp(t *check.T, op string) {
+// requireOp skips the check unless describe lists op, and returns the ops
+// it lists.
+func requireOp(t *check.T, op string) map[string]any {
+	ops := describedOps(t, op)
+	if _, ok := ops[op]; !ok {
+		t.Skipf("the server doesn't advertise %s", op)
+	}
+	return ops
+}
+
+// describedOps returns the ops describe lists, skipping the check when it
+// can't tell whether there's op.
+func describedOps(t *check.T, op string) map[string]any {
 	ops, ok := describe(t).Get("ops").(map[string]any)
 	if !ok {
 		t.Skipf("can't tell whether the server supports %s (see describe.ops-dict)", op)
 	}
-	if _, ok := ops[op]; !ok {
-		t.Skipf("the server doesn't advertise %s", op)
-	}
+	return ops
 }

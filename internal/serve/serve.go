@@ -211,7 +211,7 @@ func (s *Server) encode(msg map[string]any) []byte {
 var (
 	done           = []any{"done"}
 	unknownSession = map[string]any{"status": []any{"error", "unknown-session", "done"}}
-	ops            = []string{"clone", "close", "describe", "eval", "interrupt", "load-file", "stdin"}
+	ops            = []string{"clone", "close", "completions", "describe", "eval", "interrupt", "load-file", "lookup", "stdin"}
 )
 
 // offers reports whether the server supports an op.
@@ -263,6 +263,10 @@ func (s *Server) handle(c *conn, req nrepl.Message) bool {
 			req = req.With(nrepl.Message{"code": req["file"]})
 		}
 		s.eval(c, req, sess)
+	case "completions":
+		s.completions(c, req, sess)
+	case "lookup":
+		s.lookup(c, req, sess)
 	case "stdin":
 		sess.give(req.Str("stdin"))
 		c.reply(req, map[string]any{"status": done})

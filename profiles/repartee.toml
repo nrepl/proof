@@ -44,3 +44,12 @@ eof = ":eof"
 [snippets.sleep]
 code = 'IO.write("proof"); Process.sleep(60_000)'
 out = "proof"
+
+# A prefix, and something it completes to.
+[snippets.completion]
+code = "Enum.ma"
+value = "Enum.map"
+
+# A function to look up.
+[snippets.lookup]
+code = "Enum.map"
