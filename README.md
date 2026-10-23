@@ -46,7 +46,9 @@ value = "3"
 
 The [profiles](profiles) folder has complete profiles for nREPL itself,
 Babashka, Basilisp, ClojureCLR, jank, dialtone (Erlang) and repartee
-(Elixir), which you can use as a starting point.
+(Elixir), which you can use as a starting point. They come with proof as
+well, so `proof run babashka` will check Babashka (provided you have it
+installed).
 
 Now you can run the checks:
 
@@ -84,7 +86,7 @@ If you're working on a client, `proof proxy` can sit between it and a
 server and record everything the two of them say to each other:
 
 ```shell
-$ proof proxy -listen 127.0.0.1:7888 profiles/babashka.toml
+$ proof proxy -listen 127.0.0.1:7888 babashka
 ```
 
 Connect your client to port 7888, use it for a while (or run its test

@@ -269,6 +269,7 @@ internal/server      starting servers
 internal/profile     loading profiles
 nrepl                a client that records all messages
 bencode              a strict bencode implementation
+profiles             the profiles of the servers in the matrix, embedded in the binary
 ```
 
 Each package depends only on the ones below it. `internal/check` knows

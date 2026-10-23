@@ -28,7 +28,7 @@ func serveFor(t *testing.T, scenarios ...string) *Server {
 
 func loadProfile(t *testing.T, name string) *profile.Profile {
 	t.Helper()
-	p, err := profile.Load("../../profiles/" + name + ".toml")
+	p, err := profile.Find(name)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -141,11 +141,13 @@ func TestPresetsGetTheColumnsOfTheirServers(t *testing.T) {
 	}
 }
 
-// Each server is named by its profile, and the scenarios it has say they're
-// what it does.
+// Each server is named by its profile, every bundled profile is a server
+// and the scenarios a server has say they're what it does.
 func TestPresetsMatchTheScenarios(t *testing.T) {
+	var names []string
 	for _, p := range Presets() {
-		prof, err := profile.Load("../../profiles/" + p.Name + ".toml")
+		names = append(names, p.Name)
+		prof, err := profile.Find(p.Name)
 		if err != nil {
 			t.Errorf("%s isn't the name of a profile: %v", p.Name, err)
 			continue
@@ -161,5 +163,8 @@ func TestPresetsMatchTheScenarios(t *testing.T) {
 				t.Errorf("%s has %s, which doesn't say %s does it", p.Name, s.Name, server)
 			}
 		}
+	}
+	if !slices.Equal(slices.Sorted(slices.Values(names)), profile.Bundled()) {
+		t.Errorf("proof serve can behave like %v, but the bundled profiles are %v", names, profile.Bundled())
 	}
 }

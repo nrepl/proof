@@ -1,6 +1,8 @@
 package profile
 
 import (
+	"errors"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -9,22 +11,64 @@ import (
 )
 
 func TestShippedProfilesLoad(t *testing.T) {
-	paths, err := filepath.Glob("../../profiles/*.toml")
-	if err != nil || len(paths) == 0 {
-		t.Fatalf("no profiles found (%v)", err)
+	names := Bundled()
+	if len(names) == 0 {
+		t.Fatal("no profiles found")
 	}
-	for _, path := range paths {
-		p, err := Load(path)
+	for _, name := range names {
+		p, err := Find(name)
 		if err != nil {
-			t.Errorf("%s: %v", path, err)
+			t.Errorf("%s: %v", name, err)
 			continue
 		}
 		if p.Launch.StartupTimeout < time.Second {
-			t.Errorf("%s: startup-timeout parsed as %s", path, p.Launch.StartupTimeout)
+			t.Errorf("%s: startup-timeout parsed as %s", name, p.Launch.StartupTimeout)
 		}
 		if _, ok := p.Snippets["value"]; !ok {
-			t.Errorf("%s: no value snippet", path)
+			t.Errorf("%s: no value snippet", name)
 		}
+		// A bundled profile has no directory to find a program in.
+		if strings.ContainsAny(p.Launch.Command[0], `/\`) {
+			t.Errorf("%s: %s isn't a program on the PATH", name, p.Launch.Command[0])
+		}
+	}
+}
+
+func TestFindingProfiles(t *testing.T) {
+	p, err := Find("babashka")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if p.Name != "Babashka" {
+		t.Errorf("babashka found %q", p.Name)
+	}
+	if _, err := Find("../../profiles/jank.toml"); err != nil {
+		t.Errorf("a path to a profile: %v", err)
+	}
+	if _, err := Find("nope"); err == nil || !strings.Contains(err.Error(), "babashka, basilisp") {
+		t.Errorf("an unknown name should list the bundled profiles, got %v", err)
+	}
+	// A path is never taken for a name.
+	for _, path := range []string{"babashka.toml", "elsewhere/babashka"} {
+		if _, err := Find(path); !errors.Is(err, fs.ErrNotExist) {
+			t.Errorf("%s: got %v, want a missing file", path, err)
+		}
+	}
+	// A name is never taken for a path, e.g. a checkout of the server.
+	dir := t.TempDir()
+	if err := os.Mkdir(filepath.Join(dir, "babashka"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	wd, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chdir(dir); err != nil {
+		t.Fatal(err)
+	}
+	defer os.Chdir(wd)
+	if _, err := Find("babashka"); err != nil {
+		t.Errorf("babashka next to a directory with that name: %v", err)
 	}
 }
 

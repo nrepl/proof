@@ -5,11 +5,16 @@ package profile
 import (
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
+	"slices"
+	"strings"
 	"time"
 
 	"github.com/BurntSushi/toml"
+
+	"github.com/nrepl/proof/profiles"
 )
 
 // Profile describes one server implementation.
@@ -76,22 +81,66 @@ type Snippet struct {
 
 // Load reads and validates a profile.
 func Load(path string) (*Profile, error) {
-	var p Profile
-	md, err := toml.DecodeFile(path, &p)
+	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
-	}
-	if undecoded := md.Undecoded(); len(undecoded) > 0 {
-		return nil, fmt.Errorf("%s: unknown keys %v", path, undecoded)
 	}
 	abs, err := filepath.Abs(path)
 	if err != nil {
 		return nil, err
 	}
-	p.Dir = filepath.Dir(abs)
+	return parse(path, data, filepath.Dir(abs))
+}
+
+// Find loads the bundled profile with the given name (e.g. babashka), or
+// the profile at path when it's not one of their names.
+func Find(path string) (*Profile, error) {
+	if !slices.Contains(Bundled(), path) {
+		p, err := Load(path)
+		if errors.Is(err, fs.ErrNotExist) && filepath.Base(path) == path && filepath.Ext(path) == "" {
+			return nil, fmt.Errorf("there's no file named %s and no bundled profile with that name (the bundled ones are %s)",
+				path, strings.Join(Bundled(), ", "))
+		}
+		return p, err
+	}
+	data, err := fs.ReadFile(profiles.FS, path+".toml")
+	if err != nil {
+		return nil, err
+	}
+	// The bundled profiles start programs from the PATH, so they don't
+	// need a directory.
+	return parse(path, data, "")
+}
+
+// Bundled returns the names of the profiles that come with proof.
+func Bundled() []string {
+	entries, err := fs.ReadDir(profiles.FS, ".")
+	if err != nil {
+		panic(err) // the profiles are embedded at build time
+	}
+	names := make([]string, len(entries))
+	for i, e := range entries {
+		names[i] = strings.TrimSuffix(e.Name(), ".toml")
+	}
+	slices.Sort(names)
+	return names
+}
+
+// parse decodes and validates the profile in data, which was loaded from
+// dir. name says where it came from in errors.
+func parse(name string, data []byte, dir string) (*Profile, error) {
+	var p Profile
+	md, err := toml.Decode(string(data), &p)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", name, err)
+	}
+	if undecoded := md.Undecoded(); len(undecoded) > 0 {
+		return nil, fmt.Errorf("%s: unknown keys %v", name, undecoded)
+	}
+	p.Dir = dir
 	p.setDefaults()
 	if err := p.validate(); err != nil {
-		return nil, fmt.Errorf("%s: %w", path, err)
+		return nil, fmt.Errorf("%s: %w", name, err)
 	}
 	return &p, nil
 }

@@ -34,6 +34,9 @@ Usage:
   proof list                          list every check, rule and scenario
   proof version
 
+PROFILE is a profile file or the name of a profile that comes with proof
+(e.g. babashka), and proof list shows their names.
+
 The exit status of run is 0 when everything passed (or failed as the
 profile expects), 1 when the server failed checks, 2 when proof couldn't
 start (bad flags or profile, or the server didn't come up), and 3 when some
@@ -106,7 +109,7 @@ func run(args []string) int {
 		fmt.Fprintln(os.Stderr, "proof run: expected one profile")
 		return 2
 	}
-	p, err := profile.Load(fs.Arg(0))
+	p, err := profile.Find(fs.Arg(0))
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "proof:", err)
 		return 2
@@ -293,7 +296,7 @@ func list(w io.Writer) {
 	for _, s := range serve.Scenarios() {
 		fmt.Fprintf(w, "%-*s %s (%s)\n", nameWidth, s.Name, s.Title, s.Who)
 	}
-	fmt.Fprint(w, "\nServers for proof serve -like, with their scenarios:\n")
+	fmt.Fprint(w, "\nProfiles that come with proof, and their scenarios for proof serve -like:\n")
 	for _, p := range serve.Presets() {
 		line := fmt.Sprintf("%-*s", nameWidth, p.Name)
 		for i, s := range p.Scenarios {

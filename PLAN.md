@@ -39,10 +39,10 @@ lookups and completions, plus requests that go wrong.
   with nothing but `changed-namespaces` that arrives after `eval-error`.
   The clients it names (REPLy and rebel-readline) lose only output,
   values and `need-input` there, so that's what it looks for now.
-- `proof run babashka` and `proof proxy babashka` don't work, even
-  though `proof serve -like babashka` does. The profiles should be
-  embedded in the binary, as people who install proof with `go install`
-  don't have the `profiles` folder at all.
+- Done: `proof run babashka` and `proof proxy babashka` work, just like
+  `proof serve -like babashka`, as the profiles are embedded in the
+  binary. People who install proof with `go install` don't have the
+  `profiles` folder at all.
 - `proof run profiles/babashka.toml -only 'eval.*'` fails with
   "expected one profile", as flags after the profile are taken for
   arguments. proof should either accept them there or say that flags go

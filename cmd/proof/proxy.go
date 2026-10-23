@@ -85,7 +85,7 @@ func proxyUntil(ctx context.Context, args []string, stdout, stderr io.Writer, li
 	var p *profile.Profile
 	if fs.NArg() == 1 {
 		var err error
-		if p, err = profile.Load(fs.Arg(0)); err != nil {
+		if p, err = profile.Find(fs.Arg(0)); err != nil {
 			fmt.Fprintln(stderr, "proof:", err)
 			return 2
 		}
