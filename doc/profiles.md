@@ -56,6 +56,15 @@ value = ":proof-marker"
 code = "1 2"
 values = ["1", "2"]
 
+[snippets.read-line]
+code = "(read-line)"
+value = '"proof"'
+eof = "nil"
+
+[snippets.sleep]
+code = '(do (print "proof") (flush) (Thread/sleep 60000))'
+out = "proof"
+
 [expected-failures]
 "eval.multiple-forms" = "only the last value is returned, see #42"
 ```
@@ -129,6 +138,7 @@ snippet is missing, all the checks that need it are skipped.
 | `session-state` | `code`, `use`, `value` | leave some state in the session that `use` reads back as `value` | `session.across-connections`, `session.isolated` |
 | `multiple` | `code`, `values` | consist of several forms that evaluate to `values` (in order) | `eval.multiple-forms` |
 | `read-line` | `code`, `value`, `eof` | read a line from stdin, evaluating to `value` when the line is `proof` and to `eof` at the end of input | `stdin.need-input`, `stdin.roundtrip`, `stdin.eof` |
+| `sleep` | `code`, `out` | print `out` and then keep running for longer than the `timeout` (e.g. a minute), so there's something to interrupt | all the `interrupt.*` checks |
 
 A few tips for writing snippets:
 
@@ -156,6 +166,9 @@ A few tips for writing snippets:
 
 - proof evaluates the `use` of `session-state` in a new session as well,
   where it must not return `value` (an error is fine).
+- proof interrupts `sleep` as soon as its `out` arrives, so make sure
+  your server sends the output right away (in Clojure that takes a
+  `flush`, as there's no newline).
 
 ## Expected Failures
 

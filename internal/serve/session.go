@@ -124,6 +124,20 @@ func (sess *session) interrupt(id string) (j *job, mismatch bool) {
 	return j, false
 }
 
+// dropJobs forgets the jobs waiting for their turn.
+func (sess *session) dropJobs() {
+	sess.mu.Lock()
+	sess.jobs = nil
+	sess.mu.Unlock()
+}
+
+// interrupted reports whether interrupt stopped j.
+func (sess *session) interrupted(j *job) bool {
+	sess.mu.Lock()
+	defer sess.mu.Unlock()
+	return j.interrupted
+}
+
 // close ends the session. Like nREPL, it interrupts the eval that's
 // running, which goes on to finish the rest of its code.
 func (sess *session) close() {

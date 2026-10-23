@@ -23,6 +23,7 @@ type behavior struct {
 	noOpEcho, noCloseOp, noInterrupt, stringVersions            bool
 	noSessionClosed, sharedState, socketSessions, anySession    bool
 	nsFallback, nsError, eofError                               bool
+	dropQueued, interruptElsewhere, lateException               bool
 	unsortedKeys, byteWrites, batchedWrites, hangUp             bool
 	stdin                                                       stdinMode
 }
@@ -87,6 +88,14 @@ var catalog = []scenario{
 		func(b *behavior) { b.nsError = true }, []string{"basilisp"}},
 	{Scenario{"eof-error", "Reading past the end of input fails instead of returning nil", "nREPL 1.7.0"},
 		func(b *behavior) { b.eofError = true }, nil},
+	{Scenario{"late-exception", "An interrupted eval's exception comes after its done, and the rest of its code still runs",
+		"nREPL 1.8.0 and Babashka"},
+		func(b *behavior) { b.lateException = true }, []string{"clojure", "babashka"}},
+	{Scenario{"drop-queued", "Evals waiting for one that gets interrupted never run", "nREPL 1.8.0 and Babashka"},
+		func(b *behavior) { b.dropQueued = true }, []string{"clojure", "babashka"}},
+	{Scenario{"interrupt-elsewhere", "An interrupted eval's done goes to the connection the interrupt came from",
+		"nREPL 1.8.0 and Babashka"},
+		func(b *behavior) { b.interruptElsewhere = true }, []string{"clojure", "babashka"}},
 	{Scenario{"unsorted-keys", "The keys of reply dicts aren't sorted", "jank"},
 		func(b *behavior) { b.unsortedKeys = true }, []string{"jank"}},
 	{Scenario{"byte-writes", "Replies are written a byte at a time", "any server, as TCP can deliver a message in pieces"},

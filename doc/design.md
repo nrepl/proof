@@ -209,8 +209,9 @@ a small piece of Clojure. That's enough for the snippets of the nREPL
 profile, the code CIDER and vim-fireplace send when they connect and
 what client tests need (output, values, errors, input, something to
 interrupt), and it gives the same replies as nREPL 1.8.0 for the same
-code. Code in other languages wouldn't help, as no client's tests send
-Erlang to a server.
+code. The only exceptions are nREPL's bugs around interrupts, which
+proof serve has only as scenarios (e.g. `drop-queued`). Code in other
+languages wouldn't help, as no client's tests send Erlang to a server.
 
 Some rules are about what a client leaves behind - sessions that were
 never closed and `need-input` that was never answered. They apply only
@@ -305,6 +306,6 @@ to have a single test suite that every server can be checked against.
 ## Future Plans
 
 At this point proof covers the core of the protocol (`describe`, unknown
-ops, sessions, `eval`, `stdin` and the wire format), the requests of
+ops, sessions, `eval`, `stdin`, `interrupt` and the wire format), the requests of
 clients and the server differences clients have to deal with.
 [PLAN.md](../PLAN.md) has what's planned next.

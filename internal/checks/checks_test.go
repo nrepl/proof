@@ -26,6 +26,7 @@ var fakeProfile = &profile.Profile{
 		"session-state": {Code: "marker", Use: "*1", Value: ":proof-marker"},
 		"multiple":      {Code: "1 2", Values: []string{"1", "2"}},
 		"read-line":     {Code: "read", Value: `"proof"`, Eof: "nil"},
+		"sleep":         {Code: "sleep", Out: "proof"},
 	},
 }
 
@@ -51,17 +52,22 @@ func TestChecksCatchMisbehaviour(t *testing.T) {
 	// What every client but REPLy goes through first.
 	connects := map[string]check.Verdict{"cider.connect": F, "calva.connect": F, "conjure.connect": F, "fireplace.connect": F,
 		"neorepl.connect": F}
+	// The interrupt checks, which can't tell whether the server has the op.
+	noInterrupts := map[string]check.Verdict{}
+	for _, c := range interruptChecks() {
+		noInterrupts[c.ID] = S
+	}
 	cases := []struct {
 		name string
 		q    quirks
 		want map[string]check.Verdict
 	}{
 		// Conjure does without the features that need ops.
-		{"ops as a list", quirks{opsList: true}, checktest.Merged(connects, map[string]check.Verdict{"describe.ops-dict": F,
+		{"ops as a list", quirks{opsList: true}, checktest.Merged(connects, noInterrupts, map[string]check.Verdict{"describe.ops-dict": F,
 			"describe.required-ops": S, "stdin.need-input": S, "stdin.roundtrip": S, "stdin.eof": S, "conjure.connect": check.Pass})},
 		{"clone not advertised", quirks{noClone: true}, map[string]check.Verdict{"describe.required-ops": F}},
 		{"no versions", quirks{noVersions: true}, map[string]check.Verdict{"describe.versions": W}},
-		{"describe kills the connection", quirks{crashOnDescribe: true}, checktest.Merged(connects, map[string]check.Verdict{
+		{"describe kills the connection", quirks{crashOnDescribe: true}, checktest.Merged(connects, noInterrupts, map[string]check.Verdict{
 			"describe.reply": F, "describe.ops-dict": S, "describe.required-ops": S, "describe.versions": S,
 			"stdin.need-input": S, "stdin.roundtrip": S, "stdin.eof": S})},
 		{"no unknown-op", quirks{noUnknownOp: true}, map[string]check.Verdict{"op.unknown": F, "op.unknown-echo": W}},
@@ -76,7 +82,8 @@ func TestChecksCatchMisbehaviour(t *testing.T) {
 			"neorepl.eval": F}},
 		{"any session accepted", quirks{acceptAnySession: true}, map[string]check.Verdict{"session.unknown": F, "session.closed": F}},
 		{"shared session state", quirks{sharedState: true}, map[string]check.Verdict{"session.isolated": F}},
-		{"sessions tied to sockets", quirks{socketSessions: true}, map[string]check.Verdict{"session.across-connections": W}},
+		{"sessions tied to sockets", quirks{socketSessions: true}, map[string]check.Verdict{"session.across-connections": W,
+			"interrupt.other-connection": S}},
 		{"no ephemeral sessions", quirks{noEphemeral: true}, map[string]check.Verdict{"session.ephemeral": F, "fireplace.connect": F}},
 		{"last value only", quirks{lastValueOnly: true}, map[string]check.Verdict{"eval.multiple-forms": F, "fireplace.connect": F}},
 		{"stderr dropped", quirks{dropErr: true}, map[string]check.Verdict{"eval.stderr": F}},
@@ -102,7 +109,7 @@ func TestChecksCatchMisbehaviour(t *testing.T) {
 		{"integer value", quirks{intValue: true}, map[string]check.Verdict{
 			"wire.field-types": F, "eval.value": F, "eval.survives-error": F, "eval.multiple-forms": F,
 			"session.ephemeral": F, "session.persistent": F, "cider.eval": F, "cider.repl": F, "calva.eval": F, "conjure.eval": F, "fireplace.eval": F,
-			"neorepl.eval": F}},
+			"neorepl.eval": F, "interrupt.survives": F, "interrupt.queued": F}},
 		{"unsorted keys", quirks{unsortedKeys: true}, map[string]check.Verdict{"wire.canonical": W}},
 		{"invalid UTF-8", quirks{badUTF8: true}, map[string]check.Verdict{"wire.utf8": W, "eval.stdout": F}},
 		{"no stdin op", quirks{noStdinOp: true}, map[string]check.Verdict{
@@ -114,6 +121,18 @@ func TestChecksCatchMisbehaviour(t *testing.T) {
 			"stdin.roundtrip": F, "stdin.eof": W}},
 		{"EOF is an error", quirks{eofError: true}, map[string]check.Verdict{"stdin.eof": W}},
 		{"input never arrives", quirks{dropStdin: true}, map[string]check.Verdict{"stdin.roundtrip": F, "stdin.eof": W}},
+		{"no interrupt op", quirks{noInterruptOp: true}, noInterrupts},
+		{"interrupt does nothing", quirks{interruptIgnored: true}, checktest.Merged(noInterrupts,
+			map[string]check.Verdict{"interrupt.running": F, "interrupt.idle": check.Pass})},
+		{"interrupt needs interrupt-id", quirks{needsInterruptID: true}, map[string]check.Verdict{"interrupt.no-id": F}},
+		{"no interrupted", quirks{noInterrupted: true}, map[string]check.Verdict{"interrupt.status": W}},
+		{"no session-idle", quirks{noSessionIdle: true}, map[string]check.Verdict{"interrupt.idle": W}},
+		{"interrupt-id ignored", quirks{anyInterruptID: true}, map[string]check.Verdict{"interrupt.id-mismatch": W}},
+		{"queued evals dropped", quirks{dropQueued: true}, map[string]check.Verdict{"interrupt.queued": F}},
+		// The interrupt's connection never sent the eval.
+		{"interrupted on the wrong connection", quirks{interruptHere: true}, map[string]check.Verdict{
+			"interrupt.other-connection": F, "wire.id": W}},
+		{"session dies on interrupt", quirks{diesOnInterrupt: true}, map[string]check.Verdict{"interrupt.survives": F, "interrupt.queued": F}},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {

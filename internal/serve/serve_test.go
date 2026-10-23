@@ -262,61 +262,79 @@ func kinds(c *nrepl.Conn, id string) []string {
 	return ks
 }
 
+// An interrupt stops the eval, which gets nothing after its done. With
+// late-exception, interrupts go the way they go on nREPL instead, where
+// the rest of the eval runs after its done.
 func TestInterrupt(t *testing.T) {
-	c := connect(t, serveFor(t))
-	session := clone(t, c)
-	if r := request(t, c, nrepl.Message{"op": "interrupt", "session": session}); !r.HasStatus("session-idle", "done") {
-		t.Errorf("idle session: %v", r.Status())
-	}
-	if r := request(t, c, nrepl.Message{"op": "interrupt"}); !r.HasStatus("error", "session-ephemeral", "done") {
-		t.Errorf("no session: %v", r.Status())
-	}
-	// What each of them sends once it's running.
-	running := map[string]string{
-		`(do (print "sleeping") (Thread/sleep 60000)) :after`: "out",
-		"(read-line) :after": "need-input",
-	}
-	for code, started := range running {
-		id, err := c.Send(nrepl.Message{"op": "eval", "code": code, "session": session})
-		if err != nil {
-			t.Fatal(err)
-		}
-		if _, err := c.WaitFor(func(m nrepl.Message) bool { return m.Str("id") == id }, timeout); err != nil {
-			t.Fatal(err)
-		}
-		r := request(t, c, nrepl.Message{"op": "interrupt", "session": session, "interrupt-id": "something else"})
-		if !r.HasStatus("error", "interrupt-id-mismatch", "done") {
-			t.Errorf("%s: interrupting some other eval: %v", code, r.Status())
-		}
-		interrupt, err := c.Send(nrepl.Message{"op": "interrupt", "session": session, "interrupt-id": id})
-		if err != nil {
-			t.Fatal(err)
-		}
-		// Like on nREPL, the eval is done before the interrupt, and the rest
-		// of its code runs after that, without another done.
-		if _, err := c.WaitFor(func(m nrepl.Message) bool { return m.Str("id") == id && m.Has("value") }, timeout); err != nil {
-			t.Fatal(err)
-		}
-		c.Settle(50*time.Millisecond, time.Second)
-		if got, want := kinds(c, id), []string{started, "done", "err", "eval-error", "value"}; !slices.Equal(got, want) {
-			t.Errorf("%s: the eval got %v, want %v", code, got, want)
-		}
-		var order []string
-		for _, ev := range c.Transcript() {
-			if ev.Msg.HasStatus("done") && (ev.Msg.Str("id") == id || ev.Msg.Str("id") == interrupt) {
-				order = append(order, ev.Msg.Str("id"))
+	for name, late := range map[string]bool{"stops": false, "late-exception": true} {
+		t.Run(name, func(t *testing.T) {
+			var scenarios []string
+			if late {
+				scenarios = []string{"late-exception"}
 			}
-		}
-		if !slices.Equal(order, []string{id, interrupt}) {
-			t.Errorf("%s: dones came in the order %v, want the eval's first", code, order)
-		}
-		if all := received(c, id); !all.HasStatus("done", "interrupted") || !strings.Contains(all.Err(), "(InterruptedException)") {
-			t.Errorf("%s: interrupted eval: %v %q", code, all.Status(), all.Err())
-		}
-	}
-	// The session goes on.
-	if v := eval(t, c, session, "(+ 1 2)").Values(); !slices.Equal(v, []string{"3"}) {
-		t.Errorf("after the interrupts: %q", v)
+			c := connect(t, serveFor(t, scenarios...))
+			session := clone(t, c)
+			if r := request(t, c, nrepl.Message{"op": "interrupt", "session": session}); !r.HasStatus("session-idle", "done") {
+				t.Errorf("idle session: %v", r.Status())
+			}
+			if r := request(t, c, nrepl.Message{"op": "interrupt"}); !r.HasStatus("error", "session-ephemeral", "done") {
+				t.Errorf("no session: %v", r.Status())
+			}
+			// What each of them sends once it's running.
+			running := map[string]string{
+				`(do (print "sleeping") (Thread/sleep 60000)) :after`: "out",
+				"(read-line) :after": "need-input",
+			}
+			for code, started := range running {
+				id, err := c.Send(nrepl.Message{"op": "eval", "code": code, "session": session})
+				if err != nil {
+					t.Fatal(err)
+				}
+				if _, err := c.WaitFor(func(m nrepl.Message) bool { return m.Str("id") == id }, timeout); err != nil {
+					t.Fatal(err)
+				}
+				r := request(t, c, nrepl.Message{"op": "interrupt", "session": session, "interrupt-id": "something else"})
+				if !r.HasStatus("error", "interrupt-id-mismatch", "done") {
+					t.Errorf("%s: interrupting some other eval: %v", code, r.Status())
+				}
+				interrupt, err := c.Send(nrepl.Message{"op": "interrupt", "session": session, "interrupt-id": id})
+				if err != nil {
+					t.Fatal(err)
+				}
+				want := []string{started, "done"}
+				if late {
+					// The eval is done before the interrupt, and the rest of
+					// its code runs after that, without another done.
+					if _, err := c.WaitFor(func(m nrepl.Message) bool { return m.Str("id") == id && m.Has("value") }, timeout); err != nil {
+						t.Fatal(err)
+					}
+					want = append(want, "err", "eval-error", "value")
+				} else if _, err := c.Collect(interrupt, timeout); err != nil {
+					t.Fatal(err)
+				}
+				c.Settle(50*time.Millisecond, time.Second)
+				if got := kinds(c, id); !slices.Equal(got, want) {
+					t.Errorf("%s: the eval got %v, want %v", code, got, want)
+				}
+				var order []string
+				for _, ev := range c.Transcript() {
+					if ev.Msg.HasStatus("done") && (ev.Msg.Str("id") == id || ev.Msg.Str("id") == interrupt) {
+						order = append(order, ev.Msg.Str("id"))
+					}
+				}
+				if !slices.Equal(order, []string{id, interrupt}) {
+					t.Errorf("%s: dones came in the order %v, want the eval's first", code, order)
+				}
+				all := received(c, id)
+				if !all.HasStatus("done", "interrupted") || late && !strings.Contains(all.Err(), "(InterruptedException)") {
+					t.Errorf("%s: interrupted eval: %v %q", code, all.Status(), all.Err())
+				}
+			}
+			// The session goes on.
+			if v := eval(t, c, session, "(+ 1 2)").Values(); !slices.Equal(v, []string{"3"}) {
+				t.Errorf("after the interrupts: %q", v)
+			}
+		})
 	}
 }
 

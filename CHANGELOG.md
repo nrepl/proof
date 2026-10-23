@@ -28,3 +28,5 @@ Initial release.
 - [#10](https://github.com/nrepl/proof/pull/10): Binaries for Linux, macOS
   and Windows on every release, and a GitHub Action for running proof in the
   CI of a server.
+- [#11](https://github.com/nrepl/proof/pull/11): Checks for `interrupt`, and
+  scenarios for nREPL's interrupt bugs in `proof serve`.

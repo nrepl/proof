@@ -75,9 +75,15 @@ func stdinChecks() []*check.Check {
 // startRead evaluates the read-line snippet in a fresh session without
 // waiting for it, since it blocks until it gets input.
 func startRead(t *check.T) (*nrepl.Conn, nrepl.Message, string) {
+	return startEval(t, "read-line")
+}
+
+// startEval evaluates a snippet in a fresh session without waiting for it,
+// and returns the connection, the session and the eval's id.
+func startEval(t *check.T, snippet string) (*nrepl.Conn, nrepl.Message, string) {
 	c := t.Connect()
 	session := t.Session(c)
-	id := t.Send(c, session.With(nrepl.Message{"op": "eval", "code": t.Snippet("read-line").Code}))
+	id := t.Send(c, session.With(nrepl.Message{"op": "eval", "code": t.Snippet(snippet).Code}))
 	return c, session, id
 }
 

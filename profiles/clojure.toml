@@ -47,3 +47,8 @@ values = ["1", "2"]
 code = "(read-line)"
 value = '"proof"'
 eof = "nil"
+
+# Prints something and then runs until it's interrupted.
+[snippets.sleep]
+code = '(do (print "proof") (flush) (Thread/sleep 60000))'
+out = "proof"

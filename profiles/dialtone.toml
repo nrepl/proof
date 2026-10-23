@@ -43,3 +43,8 @@ values = ["1", "2"]
 code = 'io:get_line("").'
 value = '"proof\n"'
 eof = "eof"
+
+# Prints something and then runs until it's interrupted.
+[snippets.sleep]
+code = 'io:format("proof"), timer:sleep(60000).'
+out = "proof"

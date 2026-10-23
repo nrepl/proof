@@ -60,7 +60,23 @@ dialtone respond to the interrupt request with a plain `done` (or with
 latter two along with `error` in nREPL's case) and add `interrupted` and
 `done` to the response of the interrupted eval request. The spec's
 fallback when there's no `interrupt-id` ("the most recent request of the
-current session") also assumes sessions.
+current session") also assumes sessions. Conjure depends on that
+fallback, as it never sends `interrupt-id`.
+
+The spec doesn't say what happens around an interrupt either, and nREPL
+1.8.0 gets some of it wrong:
+
+- The evals waiting for the interrupted one should still run. nREPL
+  drops them ([nrepl#503](https://github.com/nrepl/nrepl/issues/503)), so
+  they never get their `done`, while CIDER sends evals while another one
+  is running all the time.
+- The `done` of the interrupted eval should go to the connection the
+  eval came from, even when the interrupt came from another one. nREPL
+  1.8.0 sends it to the interrupt's connection
+  ([nrepl#498](https://github.com/nrepl/nrepl/pull/498) fixes that).
+- Nothing should follow the `done` of the interrupted eval, but nREPL
+  sends the exception the interrupted code threw after it
+  ([nrepl#506](https://github.com/nrepl/nrepl/issues/506)).
 
 ### Reused Request IDs in the Examples
 

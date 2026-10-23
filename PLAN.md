@@ -64,27 +64,31 @@ lookups and completions, plus requests that go wrong.
 
 ### interrupt
 
-- Checks for interrupting a running eval (the eval gets `interrupted`
-  and `done`, the interrupt gets a `done` of its own), interrupting an
-  idle session (`session-idle`), an `interrupt-id` that doesn't match
-  and the session working afterwards.
-- An interrupt sent right after its eval. nREPL marks a session as
-  running only once the eval leaves the session's queue, so such an
-  interrupt can find the session idle
-  ([nrepl#504](https://github.com/nrepl/nrepl/issues/504)). The evals
-  waiting behind an interrupted one
-  ([nrepl#503](https://github.com/nrepl/nrepl/issues/503)) and the
-  exception of an interrupted eval, which nREPL sends after its `done`
-  ([nrepl#506](https://github.com/nrepl/nrepl/issues/506)), need checks
-  too.
-- Where an interrupted eval's `done` goes when the interrupt comes from
-  another connection
-  ([nrepl#498](https://github.com/nrepl/nrepl/pull/498)). Once an nREPL
-  release has the fix, `profiles/clojure.toml` and `proof serve` move to
-  it.
-- A step option for client profiles that sends a request without waiting
-  for its reply, so profiles can send `interrupt` and `stdin` while an
-  eval is running, the way CIDER, Calva and Conjure do.
+- Done: checks for interrupting a running eval, with and without
+  `interrupt-id` (Conjure never sends one), the `interrupted` status, an
+  idle session, an `interrupt-id` that doesn't match and the session
+  working afterwards.
+- Done: the evals waiting behind an interrupted one, which nREPL 1.8.0
+  and Babashka drop
+  ([nrepl#503](https://github.com/nrepl/nrepl/issues/503)), and where an
+  interrupted eval's `done` goes when the interrupt comes from another
+  connection, which nREPL's main branch gets right now
+  ([nrepl#498](https://github.com/nrepl/nrepl/pull/498)). The exception
+  of an interrupted eval, which nREPL sends after its `done`
+  ([nrepl#506](https://github.com/nrepl/nrepl/issues/506)), is
+  `wire.after-done`'s warning.
+- Done: `proof serve` interrupts like dialtone and repartee do, and has
+  nREPL's bugs as scenarios (`late-exception`, `drop-queued` and
+  `interrupt-elsewhere`), which `-like clojure` and `-like babashka`
+  turn on.
+- Not done: an interrupt sent right after its eval, which can find
+  nREPL's session idle
+  ([nrepl#504](https://github.com/nrepl/nrepl/issues/504)). That's a
+  race, so a check can't count on hitting it.
+- Not needed: a step option for client profiles that sends a request
+  without waiting for its reply. The `interrupt` requests of CIDER,
+  Calva and vim-fireplace are plain enough for `interrupt.running`, and
+  Conjure's for `interrupt.no-id`.
 
 ### load-file
 
