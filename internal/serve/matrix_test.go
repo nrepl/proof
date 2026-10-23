@@ -2,6 +2,7 @@ package serve
 
 import (
 	"fmt"
+	"maps"
 	"slices"
 	"strings"
 	"testing"
@@ -58,12 +59,13 @@ func runSomeChecksAs(t *testing.T, server string, cs []*check.Check, scenarios .
 	return checktest.ByID(check.Run(env, cs, checks.WireRules()))
 }
 
-// noInterrupts is what the interrupt checks get from servers without the
-// op: skipped.
+// noInterrupts is what servers without interrupt get from the interrupt
+// checks, and the checks that interrupt the sleep snippet they start:
+// skipped.
 var noInterrupts = func() map[string]check.Verdict {
 	v := map[string]check.Verdict{}
 	for _, c := range checks.All() {
-		if strings.HasPrefix(c.ID, "interrupt.") {
+		if strings.HasPrefix(c.ID, "interrupt.") || slices.Contains(c.Requires, "interrupt.running") {
 			v[c.ID] = check.Skipped
 		}
 	}
@@ -104,7 +106,7 @@ func TestScenariosGetTheVerdictsOfTheirServers(t *testing.T) {
 		{[]string{"no-session-closed"}, map[string]check.Verdict{"session.close": F}},
 		{[]string{"shared-state"}, map[string]check.Verdict{"session.isolated": F}},
 		{[]string{"socket-sessions"}, map[string]check.Verdict{"session.across-connections": W,
-			"interrupt.other-connection": S}},
+			"interrupt.other-connection": S, "robust.disconnect": S}},
 		{[]string{"any-session"}, map[string]check.Verdict{"session.unknown": F, "session.closed": F}},
 		{[]string{"ns-fallback"}, map[string]check.Verdict{"eval.unknown-ns": F}},
 		{[]string{"ns-error"}, map[string]check.Verdict{"eval.unknown-ns": F}},
@@ -127,10 +129,11 @@ func TestScenariosGetTheVerdictsOfTheirServers(t *testing.T) {
 
 // A server's scenarios together get its column of the compatibility
 // matrix. The columns leave out eval.no-code, as no client sends an eval
-// without code, and the checks of completions and lookups, which are
-// nREPL's in proof serve. That's also why Basilisp's column has no
-// wire.canonical warning, and ClojureCLR's no wire.field-types failure,
-// which their info replies get in the matrix.
+// without code, the checks of completions and lookups, which are nREPL's
+// in proof serve, and the robust checks, as proof serve doesn't hang or
+// crash where servers do. So they also leave out what the wire rules make
+// of the replies to those checks (e.g. Basilisp's duplicate status in
+// info, or the replies without an id to frames that aren't requests).
 func TestPresetsGetTheColumnsOfTheirServers(t *testing.T) {
 	F, W, S := check.Failed, check.Warned, check.Skipped
 	noJava := map[string]check.Verdict{"fireplace.connect": S, "fireplace.eval": S}
@@ -163,11 +166,12 @@ func TestPresetsGetTheColumnsOfTheirServers(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			// proof serve's completions and lookups are nREPL's whatever
-			// server it acts like.
-			cs := slices.DeleteFunc(checks.All(), func(c *check.Check) bool {
-				return strings.HasPrefix(c.ID, "completion.") || strings.HasPrefix(c.ID, "lookup.")
-			})
+			left := func(id string) bool {
+				return strings.HasPrefix(id, "completion.") || strings.HasPrefix(id, "lookup.") || strings.HasPrefix(id, "robust.")
+			}
+			cs := slices.DeleteFunc(checks.All(), func(c *check.Check) bool { return left(c.ID) })
+			want = maps.Clone(want)
+			maps.DeleteFunc(want, func(id string, _ check.Verdict) bool { return left(id) })
 			checktest.Verdicts(t, runSomeChecksAs(t, name, cs, scenarios...), want)
 		})
 	}

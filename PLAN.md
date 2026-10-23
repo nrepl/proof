@@ -117,17 +117,19 @@ lookups and completions, plus requests that go wrong.
 
 ### Requests That Go Wrong
 
-- Malformed messages, top-level values that aren't dicts and fields of
-  the wrong type ([nrepl#477](https://github.com/nrepl/nrepl/issues/477)).
-- An eval whose reply bencode can't carry, e.g. a boolean
-  ([babashka#2201](https://github.com/babashka/babashka/issues/2201)).
-- A client that goes away in the middle of an eval
-  ([babashka#2227](https://github.com/babashka/babashka/issues/2227)).
-- Two clients evaluating code at the same time
-  ([jank#1022](https://github.com/jank-lang/jank/issues/1022)).
-
-After each of them the session has to keep answering, and the server as
-well.
+- Done: frames that aren't requests (the server has to keep taking
+  connections), fields of the wrong type
+  ([nrepl#477](https://github.com/nrepl/nrepl/issues/477)), a client that
+  goes away in the middle of an eval
+  ([babashka#2227](https://github.com/babashka/babashka/issues/2227)) and
+  an eval in one session holding up the others
+  ([jank#1022](https://github.com/jank-lang/jank/issues/1022)). A bencode
+  string takes jank down, and after a client goes away in the middle of
+  an eval, nREPL (1.8.0 and its main branch) never sends the `done` of
+  the next eval in that session.
+- Not done: an eval whose reply bencode can't carry, e.g. a boolean
+  ([babashka#2201](https://github.com/babashka/babashka/issues/2201)), as
+  there's no telling which code makes a server send one.
 
 ### Before the Release
 

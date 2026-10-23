@@ -2,6 +2,7 @@ package checks
 
 import (
 	"bufio"
+	"errors"
 	"net"
 	"strconv"
 	"strings"
@@ -76,6 +77,10 @@ type quirks struct {
 	eldocStrings     bool // eldoc's arglists are strings rather than lists
 	pathFile         bool // the file of a symbol is a path rather than a URI
 	ciderPrefixed    bool // cider-nrepl's ops go by their cider/ names only
+	crashOnGarbage   bool // a frame that isn't a request takes the server down
+	typesKill        bool // an eval with a line that isn't an integer kills its session
+	diesOnDisconnect bool // a session dies when its eval's connection goes away
+	oneEvalAtATime   bool // an eval in one session holds up all the others
 }
 
 var unknownSession = map[string]any{"status": []any{"error", "unknown-session", "done"}}
@@ -138,19 +143,36 @@ func newFakeSession() *fakeSession {
 
 func (s *fakeServer) serve(c net.Conn) {
 	defer c.Close()
+	defer s.disconnected(c)
 	dec := bencode.NewDecoder(bufio.NewReader(c))
 	local := map[string]bool{}
 	for {
 		v, err := dec.Decode()
-		if err != nil {
-			return
-		}
 		m, ok := v.Data.(map[string]any)
-		if !ok {
+		if err != nil || !ok {
+			var garbage *bencode.SyntaxError
+			if s.q.crashOnGarbage && (err == nil || errors.As(err, &garbage)) {
+				s.ln.Close()
+			}
 			return
 		}
 		if !s.handle(c, nrepl.Message(m), local) {
 			return
+		}
+	}
+}
+
+// disconnected kills the sessions whose running eval came from c, with
+// diesOnDisconnect.
+func (s *fakeServer) disconnected(c net.Conn) {
+	if !s.q.diesOnDisconnect {
+		return
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for _, sess := range s.sessions {
+		if sess.running != nil && sess.running.c == c {
+			sess.dead = true
 		}
 	}
 }
@@ -320,6 +342,16 @@ func (s *fakeServer) handle(c net.Conn, req nrepl.Message, local map[string]bool
 	return true
 }
 
+// anyRunning reports whether an eval runs in any session. s.mu is held.
+func (s *fakeServer) anyRunning() bool {
+	for _, sess := range s.sessions {
+		if sess.running != nil {
+			return true
+		}
+	}
+	return false
+}
+
 // complete offers proof for a prefix of it, like nREPL's completions and
 // cider-nrepl's complete do.
 func (s *fakeServer) complete(c net.Conn, req nrepl.Message) {
@@ -460,7 +492,7 @@ func (s *fakeServer) interrupt(c net.Conn, req nrepl.Message, local map[string]b
 	sess.running = nil
 	queue := sess.queue
 	sess.queue = nil
-	sess.dead = q.diesOnInterrupt
+	sess.dead = sess.dead || q.diesOnInterrupt
 	s.mu.Unlock()
 	to, status := run.c, []any{"done", "interrupted"}
 	if q.interruptHere {
@@ -490,7 +522,10 @@ func (s *fakeServer) eval(c net.Conn, req nrepl.Message, local map[string]bool) 
 	if busy {
 		sess.queue = append(sess.queue, fakeRun{c, req, local})
 	}
-	skip := busy || sess.dead
+	if _, ok := req["line"].(string); ok && q.typesKill {
+		sess.dead = true
+	}
+	skip := busy || sess.dead || q.oneEvalAtATime && s.anyRunning()
 	s.mu.Unlock()
 	if skip {
 		return

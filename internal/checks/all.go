@@ -15,5 +15,7 @@ func All() []*check.Check {
 	all = append(all, completionChecks()...)
 	all = append(all, lookupChecks()...)
 	all = append(all, clientProfileChecks()...)
+	// Last, as they may take the server down.
+	all = append(all, robustChecks()...)
 	return all
 }

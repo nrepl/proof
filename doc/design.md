@@ -194,8 +194,9 @@ checks against every scenario, and a scenario has to get the same
 verdicts as the servers it names. `-like` turns on all the scenarios of a
 server, and together they have to get that server's column of the matrix
 (apart from `eval.no-code`, which no client sends, the checks that come
-down to the server's language and those of completions and lookups,
-which are nREPL's in proof serve).
+down to the server's language, those of completions and lookups, which
+are nREPL's in proof serve, and the `robust.*` checks, as proof serve
+doesn't hang or crash where servers do).
 
 The grading works the other way around here. proof can't see what a
 client shows its users, so the client's own tests have to do that. Most
