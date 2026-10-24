@@ -44,6 +44,7 @@ type quirks struct {
 	noSessionEcho    bool
 	noID             bool // output messages carry no id
 	intValue         bool // value is an integer
+	printNewline     bool // a value printed with a print function ends in a newline
 	statusString     bool // status "done" instead of ["done"] on unknown-op
 	unsortedKeys     bool // describe reply has keys out of order
 	badUTF8          bool // out isn't valid UTF-8
@@ -633,6 +634,9 @@ func (s *fakeServer) eval(c net.Conn, req nrepl.Message, local map[string]bool) 
 		valueMsg := map[string]any{"value": value}
 		if !q.noNs {
 			valueMsg["ns"] = "user"
+		}
+		if q.printNewline && req.Has("nrepl.middleware.print/print") {
+			valueMsg["value"] = value + "\n"
 		}
 		if q.intValue {
 			if n, err := strconv.Atoi(value); err == nil {
