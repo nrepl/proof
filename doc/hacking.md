@@ -256,7 +256,7 @@ besides `done`:
 | Option | What the reply needs |
 |---|---|
 | `new-session` | A `new-session`, which later steps can use as `$` and this name (e.g. `session = "$repl"`). |
-| `snippet` | The value of this snippet of the server's profile, with all the parts it came in joined together. Its code goes in the request (in `file` for `load-file`), as it stands for the user's code. |
+| `snippet` | The value of this snippet of the server's profile, with all the parts it came in joined together. Its code goes in the request (in `file` for `load-file`), as it stands for the user's code. Whitespace after the value doesn't count, as cider-nrepl's `pprint` ends values with a newline. |
 | `values` | At least this many values, told apart by the `ns` that comes with each one (or after it), which is how some clients tell them apart. |
 | `dicts` | These fields have to be dicts (or empty lists), if the reply has them. Each one is a list of keys, e.g. `["versions", "clojure"]`. |
 

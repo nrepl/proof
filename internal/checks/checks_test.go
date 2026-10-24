@@ -145,6 +145,8 @@ func TestChecksCatchMisbehaviour(t *testing.T) {
 			"session.ephemeral": F, "session.persistent": F, "cider.eval": F, "cider.repl": F, "calva.eval": F, "conjure.eval": F, "fireplace.eval": F,
 			"neorepl.eval": F, "interrupt.survives": F, "interrupt.queued": F, "load-file.value": F, "robust.wrong-types": W,
 			"robust.disconnect": F, "robust.sessions-at-once": F, "robust.bad-frames": F})},
+		// Like cider-nrepl's pprint.
+		{"printed values end in a newline", quirks{printNewline: true}, nil},
 		{"unsorted keys", quirks{unsortedKeys: true}, map[string]check.Verdict{"wire.canonical": W}},
 		{"invalid UTF-8", quirks{badUTF8: true}, map[string]check.Verdict{"wire.utf8": W, "eval.stdout": F}},
 		{"no stdin op", quirks{noStdinOp: true}, map[string]check.Verdict{

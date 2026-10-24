@@ -168,7 +168,10 @@ func (c clientCheck) replay(t *check.T) {
 			sessions[s.NewSession] = id
 		}
 		if s.Snippet != "" {
-			switch got := strings.Join(resp.Values(), ""); got {
+			// Whitespace after the value doesn't count, as cider-nrepl's
+			// pprint, which Calva and Conjure ask for, ends values with a
+			// newline.
+			switch got := strings.Join(resp.Values(), ""); strings.TrimRight(got, " \t\r\n") {
 			case want:
 			case "":
 				t.Stopf("%s gave no value, so %s", step, s.Why)
