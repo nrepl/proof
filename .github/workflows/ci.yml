@@ -15,6 +15,7 @@ jobs:
         go: ['1.23', stable]
     name: test (${{ matrix.os }}, go ${{ matrix.go }})
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-go@v7
@@ -38,6 +39,7 @@ jobs:
   # checks Babashka fails don't break proof's CI.
   action:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
       - uses: DeLaGuardo/setup-clojure@13.7.0
