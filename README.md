@@ -138,8 +138,7 @@ and neorepl send while connecting, evaluating code and loading files,
 the requests clients send and the server differences clients have to
 deal with, and `proof list` will show you all the checks.
 
-The first release is coming next.
-[PLAN.md](PLAN.md) has all the details.
+Check out [PLAN.md](PLAN.md) for what's next.
 
 ## Why "proof"?
 

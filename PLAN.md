@@ -27,11 +27,11 @@ something big.
 
 ## 0.1.0
 
-The first release. Once it's out, server authors can run a fixed
-version of proof in their CI (jank is already looking into this, see
-[jank#1104](https://github.com/jank-lang/jank/issues/1104)), and it
-covers the rest of what every editor sends: `interrupt`, `load-file`,
-lookups and completions, plus requests that go wrong.
+The first release, which came out on 2026-10-26. Server authors can
+run a fixed version of proof in their CI now (jank is already looking
+into this, see [jank#1104](https://github.com/jank-lang/jank/issues/1104)),
+and it covers the rest of what every editor sends: `interrupt`,
+`load-file`, lookups and completions, plus requests that go wrong.
 
 ### Rough Edges
 
@@ -142,10 +142,9 @@ lookups and completions, plus requests that go wrong.
 - [Spec Changes](doc/spec-changes.md) has everything the new checks found.
 - The docs cover the new checks and the release.
 
-## Alongside 0.1.0
+## After 0.1.0
 
-These don't have to wait for the release, and the release doesn't have
-to wait for them either.
+This is what's next for proof.
 
 ### The Matrix
 

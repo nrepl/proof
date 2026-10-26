@@ -21,11 +21,6 @@ $ go install github.com/nrepl/proof/cmd/proof@latest
 That puts `proof` in `$(go env GOPATH)/bin`. `@latest` is the latest
 release, and `@main` is whatever is on `main` at the moment.
 
-> [!NOTE]
-> proof 0.1.0 is not out yet, so for now `@latest` is simply whatever is
-> on `main`. If you always need the same build (e.g. in CI), you can
-> install a specific commit with `@<commit-sha>`.
-
 Alternatively you can build proof from source:
 
 ```shell
