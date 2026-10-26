@@ -382,5 +382,6 @@ Releasing a new version of proof is a very simple process:
 
 The Release workflow takes it from there. It builds the binaries with
 `script/build-release` and publishes them in a GitHub release, whose
-notes are the version's section of the CHANGELOG. If you edit that
-section later, update the notes of the release as well.
+notes are the version's section of the CHANGELOG. GitHub keeps all the
+newlines in the notes, so each CHANGELOG entry goes on a single line. If
+you edit that section later, update the notes of the release as well.
