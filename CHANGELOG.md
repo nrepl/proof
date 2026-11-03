@@ -2,6 +2,10 @@
 
 ## main (unreleased)
 
+### Features
+
+- [#23](https://github.com/nrepl/proof/pull/23): A clients tab on the compatibility matrix page, with how many of the checks each client depends on every server passes.
+
 ### Changes
 
 - [#22](https://github.com/nrepl/proof/pull/22): The bundled profiles have short names, with versions from their `version` snippets, so the servers in the compatibility matrix get columns of the same width.

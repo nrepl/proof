@@ -231,3 +231,24 @@ func nonDictField(resp nrepl.Response, path []string) any {
 	}
 	return v
 }
+
+// ClientsOf names the clients that break when a server fails a check or
+// rule with the given severity and refs: the ones with a client profile
+// whose code the refs point at, or every one of them when the refs don't
+// point at any (e.g. a value that never comes). A warning breaks nobody.
+func ClientsOf(severity check.Severity, refs []check.Ref) []string {
+	if severity != check.Fail {
+		return nil
+	}
+	var cited, all []string
+	for _, p := range clientProfiles() {
+		all = append(all, p.Name)
+		if slices.ContainsFunc(refs, func(r check.Ref) bool { return strings.HasPrefix(r.URL, p.Code) }) {
+			cited = append(cited, p.Name)
+		}
+	}
+	if len(cited) == 0 {
+		return all
+	}
+	return cited
+}
