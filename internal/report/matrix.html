@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>nREPL Compatibility Matrix</title>
+<style>
+:root {
+  --bg: #ffffff;
+  --fg: #1f2328;
+  --muted: #656d76;
+  --line: #d8dee4;
+  --head: #f6f8fa;
+  --link: #0969da;
+  --pass-fg: #116329;
+  --warn-bg: #fff8c5;
+  --warn-fg: #7d4e00;
+  --fail-bg: #ffebe9;
+  --fail-fg: #a40e26;
+  --error-bg: #fbefff;
+  --error-fg: #6e40c9;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0d1117;
+    --fg: #e6edf3;
+    --muted: #8d96a0;
+    --line: #30363d;
+    --head: #161b22;
+    --link: #4493f8;
+    --pass-fg: #56d364;
+    --warn-bg: #272115;
+    --warn-fg: #e3b341;
+    --fail-bg: #2d1214;
+    --fail-fg: #ff7b72;
+    --error-bg: #231536;
+    --error-fg: #d2a8ff;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 24px 16px;
+  background: var(--bg);
+  color: var(--fg);
+  font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+a { color: var(--link); }
+header, footer { max-width: 60rem; }
+h1 { margin: 0 0 8px; font-size: 1.75rem; }
+p { margin: 0 0 12px; }
+dl { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; margin: 0 0 20px; }
+dt { font-weight: 600; }
+dd { margin: 0; }
+.scroll { overflow: auto; max-height: 85vh; border: 1px solid var(--line); border-radius: 6px; }
+table { border-collapse: collapse; width: 100%; }
+th, td { padding: 4px 10px; border-bottom: 1px solid var(--line); text-align: left; }
+thead th {
+  position: sticky;
+  top: 0;
+  background: var(--head);
+  vertical-align: bottom;
+  min-width: 6rem;
+  z-index: 1;
+}
+thead th:first-child { left: 0; z-index: 2; }
+thead th + th { text-align: center; }
+.version { display: block; color: var(--muted); font-weight: normal; font-size: 0.85em; }
+tbody th, tfoot th {
+  position: sticky;
+  left: 0;
+  background: var(--bg);
+  font-weight: normal;
+  min-width: min(18rem, 55vw);
+}
+th code { font-size: 0.9em; }
+.title { display: block; color: var(--muted); font-size: 0.9em; }
+.group th { background: var(--head); font-weight: 600; padding-top: 12px; }
+td { text-align: center; white-space: nowrap; }
+.pass { color: var(--pass-fg); }
+.warn { background: var(--warn-bg); color: var(--warn-fg); }
+.fail { background: var(--fail-bg); color: var(--fail-fg); font-weight: 700; }
+.error { background: var(--error-bg); color: var(--error-fg); }
+.skip { color: var(--muted); }
+[title] { cursor: help; }
+tfoot th, tfoot td { font-weight: 700; border-bottom: none; }
+footer { margin-top: 16px; color: var(--muted); }
+</style>
+</head>
+<body>
+<header>
+<h1>nREPL Compatibility Matrix</h1>
+<p>Here's how the servers below fare against the checks of
+<a href="https://github.com/nrepl/proof">proof</a>, which are mostly about
+what the clients people use (CIDER, Calva, Conjure, vim-fireplace, REPLy and
+neorepl) need from a server.</p>
+<dl>
+<dt><span class="pass">pass</span></dt><dd>The server does what the clients need.</dd>
+<dt><span class="fail">fail</span></dt><dd>Some client won't work properly with the server, or users lose data.</dd>
+<dt><span class="warn">warn</span></dt><dd>The server does something differently from nREPL or the spec, but no client we know of minds.</dd>
+<dt><span class="skip">skip</span></dt><dd>The check doesn't apply to the server (e.g. it needs Java interop).</dd>
+<dt><span class="error">error</span></dt><dd>proof couldn't run the check.</dd>
+</dl>
+<p>Hover over a check to see why it matters, and over a verdict for the details.</p>
+</header>
+<div class="scroll">
+<table>
+<!-- table -->
+</table>
+</div>
+<footer>
+<p>Made with <!-- proof -->.</p>
+</footer>
+</body>
+</html>

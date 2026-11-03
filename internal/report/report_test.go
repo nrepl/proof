@@ -16,7 +16,7 @@ func sampleRun(server string, verdicts ...check.Verdict) Run {
 	ids := []string{"describe.reply", "eval.value", "eval.ns"}
 	r := Run{Proof: "test", Server: server, Address: "localhost:1", Started: time.Unix(0, 0)}
 	for i, v := range verdicts {
-		r.Results = append(r.Results, check.Result{ID: ids[i], Title: "title " + ids[i], Verdict: v})
+		r.Results = append(r.Results, check.Result{ID: ids[i], Title: "title " + ids[i], Why: "why " + ids[i], Verdict: v})
 	}
 	return r
 }
@@ -64,6 +64,62 @@ func TestMatrixFromJSONReports(t *testing.T) {
 		if !strings.Contains(got, want) {
 			t.Errorf("matrix is missing %q:\n%s", want, got)
 		}
+	}
+}
+
+func TestMatrixAsAPage(t *testing.T) {
+	var buf bytes.Buffer
+	if err := HTML(&buf, sampleReports(t)); err != nil {
+		t.Fatal(err)
+	}
+	got := buf.String()
+	for _, want := range []string{
+		`<th>Beta | Two<span class="version">2.0</span></th>`,
+		`<tr class="group"><th colspan="3">eval</th></tr>`,
+		`<th scope="row" title="why eval.value"><code>eval.value</code><span class="title">title eval.value</span></th>`,
+		`<td class="pass">pass</td><td class="fail" title="gave no value">fail</td>`,
+		`<td class="skip">skip</td>`,
+		`<td>3/3</td><td>1/2</td>`,
+		"Made with proof test on 2026-11-03.",
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("page is missing %q:\n%s", want, got)
+		}
+	}
+}
+
+// A check the first report doesn't have still goes in its group.
+func TestChecksFromLaterReportsJoinTheirGroup(t *testing.T) {
+	reports := []Report{
+		{Run: Run{Server: "Alpha"}, Results: []jsonResult{{ID: "eval.value"}, {ID: "describe.reply"}}},
+		{Run: Run{Server: "Beta"}, Results: []jsonResult{{ID: "eval.value"}, {ID: "describe.reply"}, {ID: "eval.ns"}}},
+	}
+	var buf bytes.Buffer
+	if err := HTML(&buf, reports); err != nil {
+		t.Fatal(err)
+	}
+	got := buf.String()
+	if n := strings.Count(got, `<tr class="group"><th colspan="3">eval</th></tr>`); n != 1 {
+		t.Errorf("eval has %d groups:\n%s", n, got)
+	}
+	if i, j := strings.Index(got, "<code>eval.ns</code>"), strings.Index(got, "<code>describe.reply</code>"); i > j {
+		t.Errorf("eval.ns isn't with the other eval checks:\n%s", got)
+	}
+	if !strings.Contains(got, "Made with proof.") {
+		t.Errorf("reports without a proof version still get one:\n%s", got)
+	}
+	reports[0].Proof, reports[1].Proof = "0.1.0", "0.2.0"
+	buf.Reset()
+	if err := HTML(&buf, reports); err != nil {
+		t.Fatal(err)
+	}
+	if got := buf.String(); !strings.Contains(got, "Made with proof 0.1.0, 0.2.0.") {
+		t.Errorf("the versions of proof aren't listed:\n%s", got)
+	}
+	buf.Reset()
+	Matrix(&buf, reports)
+	if got := buf.String(); strings.Index(got, "`eval.ns`") > strings.Index(got, "`describe.reply`") {
+		t.Errorf("eval.ns isn't with the other eval checks:\n%s", got)
 	}
 }
 

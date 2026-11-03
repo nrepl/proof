@@ -364,9 +364,10 @@ proof uses a few GitHub Actions workflows:
   the way a server's CI would use it.
 - Compatibility runs all the profiles against their servers every day
   (and on every push to `main`) and builds the compatibility matrix in
-  the job summary. As servers failing checks is perfectly normal, this
-  workflow fails only when proof itself can't do its job (e.g. a server
-  can't be installed or doesn't start).
+  the job summary. When every server ran, it also publishes the matrix
+  on [GitHub Pages](https://nrepl.github.io/proof/). As servers failing
+  checks is perfectly normal, this workflow fails only when proof itself
+  can't do its job (e.g. a server can't be installed or doesn't start).
 - Release builds the binaries for every platform when a version gets
   tagged and publishes them in a GitHub release.
 
