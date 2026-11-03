@@ -56,3 +56,7 @@ value = "println"
 # A function to look up.
 [snippets.lookup]
 code = "println"
+
+# The version of jank, for the report. clojure-version says jank-0.1-alpha.
+[snippets.version]
+code = '(clojure.string/replace (clojure-version) "jank-" "")'

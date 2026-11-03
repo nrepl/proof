@@ -2,6 +2,10 @@
 
 ## main (unreleased)
 
+### Changes
+
+- [#22](https://github.com/nrepl/proof/pull/22): The bundled profiles have short names, with versions from their `version` snippets, so the servers in the compatibility matrix get columns of the same width.
+
 ## 0.2.0 (2026-11-03)
 
 ### Features

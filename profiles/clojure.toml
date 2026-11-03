@@ -1,5 +1,5 @@
 # The reference implementation, nrepl/nrepl, on the Clojure CLI.
-name = "Clojure (nrepl/nrepl 1.8.0)"
+name = "nREPL"
 homepage = "https://github.com/nrepl/nrepl"
 
 [launch]
@@ -61,3 +61,7 @@ value = "println"
 # A function to look up.
 [snippets.lookup]
 code = "println"
+
+# The version of nREPL, for the report.
+[snippets.version]
+code = "(:version-string nrepl.core/version)"

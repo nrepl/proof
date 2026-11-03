@@ -1,6 +1,6 @@
 # repartee, the Elixir nREPL server from nrepl/nrepl-beam. Expects the
 # repartee launcher (repartee/bin/repartee) on PATH.
-name = "repartee (Elixir)"
+name = "repartee"
 homepage = "https://github.com/nrepl/nrepl-beam"
 
 [launch]

@@ -205,9 +205,8 @@ func TestPresetsMatchTheScenarios(t *testing.T) {
 			t.Errorf("%s isn't the name of a profile: %v", p.Name, err)
 			continue
 		}
-		// e.g. "ClojureCLR (clr.tools.nrepl 0.1.2-alpha2)" says ClojureCLR,
-		// but the profile of nREPL itself is named after Clojure.
-		server, _, _ := strings.Cut(prof.Name, " (")
+		// nREPL's scenarios say which version does them.
+		server := prof.Name
 		if p.Name == "clojure" {
 			server = "nREPL 1.8.0"
 		}

@@ -19,6 +19,7 @@ type Run struct {
 	// ServerVersion is what the version snippet of the server's profile
 	// evaluated to, if it has one.
 	ServerVersion string         `json:"server-version,omitempty"`
+	Homepage      string         `json:"homepage,omitempty"`
 	Address       string         `json:"address"`
 	Started       time.Time      `json:"started"`
 	Results       []check.Result `json:"-"`

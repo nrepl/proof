@@ -219,8 +219,8 @@ func run(args []string) int {
 	results := check.Run(env, selected, checks.WireRules())
 	outcome := check.Apply(results, p.ExpectedFailures, opts.only == "")
 
-	r := report.Run{Proof: proofVersion(), Server: p.Name, ServerVersion: ver, Address: addr, Started: started,
-		Results: results}
+	r := report.Run{Proof: proofVersion(), Server: p.Name, ServerVersion: ver, Homepage: p.Homepage,
+		Address: addr, Started: started, Results: results}
 	report.Text(os.Stdout, r, opts.verbose)
 	for _, id := range outcome.Stale {
 		fmt.Printf("%s is listed in expected-failures but didn't fail; remove it from the profile\n", id)

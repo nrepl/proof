@@ -87,8 +87,8 @@ code = "fizz.core/version"
 
 | Option | Required | Description |
 |---|---|---|
-| `name` | yes | The name of the server in reports and in the compatibility matrix. If the profile always starts the same version of the server, it's a good idea to include it here (otherwise see the `version` snippet). |
-| `homepage` | no | The homepage of the server. |
+| `name` | yes | The name of the server in reports and in the compatibility matrix, where it heads a column, so keep it short. The `version` snippet takes care of the version. |
+| `homepage` | no | The homepage of the server, which the name links to in the compatibility matrix. |
 | `address` | no | The `host:port` of a server that's already running. When it's set proof connects to the server instead of starting it, and `[launch]` is ignored. The `-address` command-line option does the same. |
 | `timeout` | no | How long proof waits for each request to finish (i.e. for its `done`). It's a duration like `"10s"` (which is also the default). |
 
