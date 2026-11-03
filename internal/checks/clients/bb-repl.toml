@@ -1,0 +1,24 @@
+# What `bb repl --connect` (Babashka 1.13.229) sends while it connects.
+# Its client is babashka.nrepl.impl.client, which is built on nREPL's own
+# client library. It evaluates the user's code with nothing but the code
+# and its session, like eval.value. The links point at the code that
+# needs what the steps check.
+name = "bb repl --connect"
+code = "https://github.com/babashka/babashka/blob/3f6cf8c81a1c99fddb849bd4f953306a3f0f2013/"
+
+[[checks]]
+id = "bb-repl.connect"
+title = "bb repl --connect can connect"
+why = "bb repl --connect clones a session and asks for describe before it shows a prompt, and it reads the ops and the versions in the reply as dicts, so a server that gets any of it wrong can't be used from it."
+
+[[checks.steps]]
+send = { op = "clone" }
+new-session = "repl"
+why = "bb repl --connect can't connect"
+refs = ["resources/src/babashka/babashka/nrepl/impl/client.clj#L16-L22"]
+
+[[checks.steps]]
+send = { op = "describe" }
+dicts = [["ops"], ["versions"]]
+why = "bb repl --connect fails with an exception before it shows a prompt"
+refs = ["resources/src/babashka/babashka/nrepl/impl/client.clj#L6-L9", "src/babashka/impl/repl.clj#L740-L750"]

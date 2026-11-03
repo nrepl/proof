@@ -1,0 +1,30 @@
+# What the client of clojure-cli.repl 0.2.3 (clojure -M:attach) sends
+# while it connects and when it evaluates code, without a config. It's
+# meant for the server that comes with it, but it works with others,
+# where its own ops (e.g. watch, on a connection of its own) get
+# unknown-op. The links point at the code that needs what the steps
+# check.
+name = "clojure-cli.repl"
+code = "https://github.com/clojure/clojure-cli.repl/blob/45f830e9b2eb6e3407a37e8d7d3075239817900d/client/src/clojure_cli/repl/"
+
+[[checks]]
+id = "clojure-cli.eval"
+title = "clojure-cli.repl can evaluate code"
+why = "clojure-cli.repl clones a session when it connects and sends what the user types with the namespace of its prompt, so a server that gets either of them wrong leaves its users without a REPL."
+needs = ["clojure"]
+
+[[checks.steps]]
+send = { op = "clone" }
+new-session = "repl"
+why = "clojure-cli.repl can't connect"
+refs = ["nrepl.clj#L29-L35", "client.clj#L429"]
+
+[[checks.steps]]
+snippet = "value"
+why = "users don't see the result of their code"
+refs = ["nrepl.clj#L12-L17", "client.clj#L454-L458"]
+
+[checks.steps.send]
+op = "eval"
+session = "$repl"
+ns = "user"
