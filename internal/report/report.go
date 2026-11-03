@@ -14,11 +14,23 @@ import (
 
 // Run is everything known about one run.
 type Run struct {
-	Proof   string         `json:"proof"`
-	Server  string         `json:"server"`
-	Address string         `json:"address"`
-	Started time.Time      `json:"started"`
-	Results []check.Result `json:"-"`
+	Proof  string `json:"proof"`
+	Server string `json:"server"`
+	// ServerVersion is what the version snippet of the server's profile
+	// evaluated to, if it has one.
+	ServerVersion string         `json:"server-version,omitempty"`
+	Address       string         `json:"address"`
+	Started       time.Time      `json:"started"`
+	Results       []check.Result `json:"-"`
+}
+
+// Title is the name of the server, followed by its version when it's
+// known.
+func (r Run) Title() string {
+	if r.ServerVersion == "" {
+		return r.Server
+	}
+	return r.Server + " " + r.ServerVersion
 }
 
 // Counts tallies verdicts.
@@ -41,7 +53,7 @@ var labels = map[check.Verdict]string{
 // Text writes a human-readable report. With verbose set it includes
 // notes for every check and transcripts for the ones that didn't pass.
 func Text(w io.Writer, run Run, verbose bool) {
-	fmt.Fprintf(w, "proof %s: %s at %s\n", run.Proof, run.Server, run.Address)
+	fmt.Fprintf(w, "proof %s: %s at %s\n", run.Proof, run.Title(), run.Address)
 	group := ""
 	for _, res := range run.Results {
 		g, _, _ := strings.Cut(res.ID, ".")

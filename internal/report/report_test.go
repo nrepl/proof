@@ -21,14 +21,18 @@ func sampleRun(server string, verdicts ...check.Verdict) Run {
 	return r
 }
 
-// The matrix is built from JSON reports, so go through the real encoder.
-func TestMatrixFromJSONReports(t *testing.T) {
+// sampleReports are the reports of two servers, the second of which
+// failed and skipped a check. The matrix is built from JSON reports, so
+// they go through the real encoder.
+func sampleReports(t *testing.T) []Report {
+	t.Helper()
+	beta := sampleRun("Beta | Two", check.Pass, check.Failed, check.Skipped)
+	beta.ServerVersion = "2.0"
+	beta.Started = time.Date(2026, 11, 3, 5, 0, 0, 0, time.UTC)
+	beta.Results[1].Details = []string{"gave no value"}
 	dir := t.TempDir()
 	var reports []Report
-	for i, run := range []Run{
-		sampleRun("Alpha", check.Pass, check.Pass, check.Pass),
-		sampleRun("Beta | Two", check.Pass, check.Failed, check.Skipped),
-	} {
+	for i, run := range []Run{sampleRun("Alpha", check.Pass, check.Pass, check.Pass), beta} {
 		path := filepath.Join(dir, string(rune('a'+i))+".json")
 		f, err := os.Create(path)
 		if err != nil {
@@ -44,12 +48,15 @@ func TestMatrixFromJSONReports(t *testing.T) {
 		}
 		reports = append(reports, r)
 	}
+	return reports
+}
 
+func TestMatrixFromJSONReports(t *testing.T) {
 	var buf bytes.Buffer
-	Matrix(&buf, reports)
+	Matrix(&buf, sampleReports(t))
 	got := buf.String()
 	for _, want := range []string{
-		"| Check | Alpha | Beta \\| Two |",
+		"| Check | Alpha | Beta \\| Two 2.0 |",
 		"| `eval.value` title eval.value | pass | **fail** |",
 		"| `eval.ns` title eval.ns | pass | skip |",
 		"| **Passed** | 3/3 | 1/2 |",
@@ -57,6 +64,16 @@ func TestMatrixFromJSONReports(t *testing.T) {
 		if !strings.Contains(got, want) {
 			t.Errorf("matrix is missing %q:\n%s", want, got)
 		}
+	}
+}
+
+func TestTextShowsTheServerVersion(t *testing.T) {
+	run := sampleRun("Alpha", check.Pass)
+	run.ServerVersion = "1.2.3"
+	var buf bytes.Buffer
+	Text(&buf, run, false)
+	if out := buf.String(); !strings.HasPrefix(out, "proof test: Alpha 1.2.3 at localhost:1") {
+		t.Errorf("no version in the report:\n%s", out)
 	}
 }
 

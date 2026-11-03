@@ -308,6 +308,8 @@ To add a server to the compatibility matrix:
 
 1. Create `profiles/<server>.toml`. Start it with a comment explaining
    what needs to be installed. [Profiles](profiles.md) covers the format.
+   Unless the profile always starts the same version of the server, give
+   it a `version` snippet, so the matrix shows which version it checked.
 2. Run it locally and make sure the results make sense. It's fine for a
    server to fail checks (that's what the matrix is for), but make sure
    that it's really the server that's failing and not the profile. Running

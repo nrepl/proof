@@ -225,7 +225,9 @@ $ proof matrix clojure.json my-server.json > matrix.md
 ```
 
 The columns appear in the order of the reports on the command line, so
-you'll probably want to put the reference implementation first.
+you'll probably want to put the reference implementation first. The
+version of each server comes from the `version` snippet of its profile,
+if it has one (see [Profiles](profiles.md#snippets)).
 
 > [!TIP]
 > proof's own CI builds such a matrix for all the profiles in the

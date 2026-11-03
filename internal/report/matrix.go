@@ -10,9 +10,10 @@ import (
 	"github.com/nrepl/proof/internal/check"
 )
 
-// Report is a JSON report read back in.
+// Report is a JSON report read back in. Its results are the ones JSON
+// wrote, rather than the Results of Run.
 type Report struct {
-	Server  string       `json:"server"`
+	Run
 	Results []jsonResult `json:"results"`
 }
 
@@ -60,7 +61,7 @@ func Matrix(w io.Writer, reports []Report) {
 	header := []string{"Check"}
 	rule := []string{"---"}
 	for _, r := range reports {
-		header = append(header, escape(r.Server))
+		header = append(header, escape(r.Title()))
 		rule = append(rule, "---")
 	}
 	fmt.Fprintf(w, "| %s |\n|%s|\n", strings.Join(header, " | "), strings.Join(rule, "|"))

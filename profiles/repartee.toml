@@ -53,3 +53,8 @@ value = "Enum.map"
 # A function to look up.
 [snippets.lookup]
 code = "Enum.map"
+
+# The version of repartee, for the report. Its application isn't loaded
+# until something asks for it.
+[snippets.version]
+code = "Application.load(:repartee); to_string(Application.spec(:repartee, :vsn))"
