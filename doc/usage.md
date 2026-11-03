@@ -34,11 +34,11 @@ $ go build -o bin/proof ./cmd/proof
 proof needs a profile for your server. That's a small TOML file that
 explains how to start the server and provides a few snippets of code in
 its language. The [profiles](../profiles) folder has profiles for nREPL
-itself, Babashka, Basilisp, ClojureCLR, jank, dialtone (Erlang) and
-repartee (Elixir), and it's a good idea to start from the one that's
-closest to your server. If you're working on a Clojure dialect you can
-probably use `clojure.toml` almost as is, otherwise `dialtone.toml` is a
-better starting point.
+itself, Babashka, nbb, Basilisp, ClojureCLR, jank, let-go, dialtone
+(Erlang) and repartee (Elixir), and it's a good idea to start from the
+one that's closest to your server. If you're working on a Clojure
+dialect you can probably use `clojure.toml` almost as is, otherwise
+`dialtone.toml` is a better starting point.
 
 The profiles in this folder come with proof, so you can also use them by
 name instead of passing a file (e.g. `proof run babashka`). If you've
@@ -354,20 +354,24 @@ the scenarios, and every one of them is something a real server does
 |---|---|---|
 | `split-output` | Output comes one character per message | nREPL splits long output, Basilisp sends `println`'s newline on its own |
 | `empty-messages` | Replies to `eval` include messages with nothing but `id` and `session` | jank |
-| `last-value` | Only the value of the last form is sent | Basilisp, jank, dialtone |
-| `no-err` | What the code prints to stderr never reaches the client | Basilisp, dialtone, repartee |
+| `last-value` | Only the value of the last form is sent | Basilisp, jank, let-go, dialtone |
+| `no-err` | What the code prints to stderr never reaches the client | Basilisp, nbb, let-go, dialtone, repartee |
 | `error-with-done` | `eval-error` comes in the same message as `done` | jank |
-| `no-op-echo` | Replies to unknown ops don't say which op it was | ClojureCLR, Basilisp, jank, dialtone, repartee |
+| `no-eval-error` | An error comes with `err` and `ex`, but without the `eval-error` status | nbb, let-go |
+| `ansi-errors` | Error messages are colored with ANSI escape codes | let-go |
+| `no-op-echo` | Replies to unknown ops don't say which op it was | ClojureCLR, Basilisp, jank, nbb, let-go, dialtone, repartee |
 | `no-close-op` | `describe` doesn't list `close`, even though `close` works | jank |
-| `no-interrupt` | There's no `interrupt` op | ClojureCLR, Basilisp, jank |
+| `no-interrupt` | There's no `interrupt` op | ClojureCLR, Basilisp, jank, nbb, and let-go doesn't list it, nor stop an eval with it |
 | `no-stdin` | There's no `stdin` op, and reading input gets `nil` right away | ClojureCLR and Basilisp started in the background, as they read their own stdin, where Basilisp gets an empty string |
-| `read-line-throws` | There's no `stdin` op, and reading input throws | jank |
+| `read-line-throws` | There's no `stdin` op, and reading input throws | jank, and nbb, which has no `read-line` |
+| `read-line-waits` | There's no `stdin` op, and reading input waits until the eval is interrupted or its session closed | let-go, which reads the terminal it runs in, where its own REPL takes the lines |
 | `string-versions` | `versions.proof` is a plain string rather than a dict | Babashka for `versions.babashka`, ClojureCLR for `versions.clojure.tools.nrepl` |
+| `no-version-string` | `versions` has `proof` and `nrepl` with the numbers of their versions as strings, but no `version-string` | let-go for `versions.let-go` and `versions.nrepl` |
 | `no-session-closed` | `close` replies with `done` alone | Basilisp, jank, dialtone, repartee |
-| `shared-state` | Sessions on the same connection share `*1`, `*e` and the current namespace | ClojureCLR, Basilisp, jank |
+| `shared-state` | Sessions on the same connection share `*1`, `*e` and the current namespace | ClojureCLR, Basilisp, jank, nbb, and let-go for the current namespace |
 | `socket-sessions` | A session only exists on the connection that cloned it | ClojureCLR, Basilisp, jank |
-| `any-session` | Requests for sessions that don't exist run in a new session | ClojureCLR, Basilisp, jank |
-| `ns-fallback` | An eval in a namespace that doesn't exist runs in the current one | jank |
+| `any-session` | Requests for sessions that don't exist run in a new session | ClojureCLR, Basilisp, jank, nbb, let-go |
+| `ns-fallback` | An eval in a namespace that doesn't exist runs in the current one | jank, nbb, let-go |
 | `ns-error` | An eval in a namespace that doesn't exist fails without `namespace-not-found` | Basilisp |
 | `eof-error` | Reading past the end of input fails instead of returning `nil` | nREPL 1.7.0 |
 | `late-exception` | An interrupted eval's exception comes after its `done`, and the rest of its code still runs | nREPL 1.8.0 and Babashka |

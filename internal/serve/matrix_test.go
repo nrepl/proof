@@ -72,6 +72,10 @@ var noInterrupts = func() map[string]check.Verdict {
 	return v
 }()
 
+// noStdin is what servers without stdin get from the stdin checks.
+var noStdin = map[string]check.Verdict{"stdin.need-input": check.Skipped, "stdin.roundtrip": check.Skipped,
+	"stdin.eof": check.Skipped}
+
 // proof serve has nREPL's completions and lookup, but not the ops of
 // cider-nrepl that clients prefer.
 var noCiderOps = map[string]check.Verdict{"completion.complete": check.Skipped, "completion.complete-symbol": check.Skipped,
@@ -85,7 +89,6 @@ func TestPassesEveryServerCheck(t *testing.T) {
 // verdicts they get in the compatibility matrix.
 func TestScenariosGetTheVerdictsOfTheirServers(t *testing.T) {
 	F, W, S := check.Failed, check.Warned, check.Skipped
-	noStdin := map[string]check.Verdict{"stdin.need-input": S, "stdin.roundtrip": S, "stdin.eof": S}
 	cases := []struct {
 		scenarios []string
 		want      map[string]check.Verdict
@@ -97,12 +100,16 @@ func TestScenariosGetTheVerdictsOfTheirServers(t *testing.T) {
 		{[]string{"last-value"}, map[string]check.Verdict{"eval.multiple-forms": F, "fireplace.connect": F}},
 		{[]string{"no-err"}, map[string]check.Verdict{"eval.stderr": F}},
 		{[]string{"error-with-done"}, nil},
+		{[]string{"no-eval-error"}, map[string]check.Verdict{"eval.error-status": F, "load-file.error": F}},
+		{[]string{"ansi-errors"}, map[string]check.Verdict{"eval.error-report": W}},
 		{[]string{"no-op-echo"}, map[string]check.Verdict{"op.unknown-echo": W}},
 		{[]string{"no-close-op"}, map[string]check.Verdict{"describe.required-ops": F}},
 		{[]string{"no-interrupt"}, noInterrupts},
 		{[]string{"no-stdin"}, noStdin},
 		{[]string{"read-line-throws"}, noStdin},
+		{[]string{"read-line-waits"}, noStdin},
 		{[]string{"string-versions"}, nil},
+		{[]string{"no-version-string"}, map[string]check.Verdict{"describe.versions": W}},
 		{[]string{"no-session-closed"}, map[string]check.Verdict{"session.close": F}},
 		{[]string{"shared-state"}, map[string]check.Verdict{"session.isolated": F}},
 		{[]string{"socket-sessions"}, map[string]check.Verdict{"session.across-connections": W,
@@ -144,16 +151,21 @@ func TestPresetsGetTheColumnsOfTheirServers(t *testing.T) {
 	columns := map[string]map[string]check.Verdict{
 		"clojure":  nreplInterrupts,
 		"babashka": nreplInterrupts,
-		"clojure-clr": checktest.Merged(noJava, noInterrupts, map[string]check.Verdict{"op.unknown-echo": W, "session.across-connections": W,
-			"session.isolated": F, "session.unknown": F, "session.closed": F, "stdin.need-input": S,
-			"stdin.roundtrip": S, "stdin.eof": S}),
-		"basilisp": checktest.Merged(noJava, noInterrupts, map[string]check.Verdict{"op.unknown-echo": W, "session.across-connections": W,
-			"session.isolated": F, "session.close": F, "session.unknown": F, "session.closed": F, "eval.stderr": F,
-			"eval.multiple-forms": F, "eval.unknown-ns": F, "stdin.need-input": S, "stdin.roundtrip": S, "stdin.eof": S}),
-		"jank": checktest.Merged(noJava, noInterrupts, map[string]check.Verdict{"describe.required-ops": F, "op.unknown-echo": W,
+		"nbb": checktest.Merged(noJava, noInterrupts, noStdin, map[string]check.Verdict{"op.unknown-echo": W,
+			"session.isolated": F, "session.unknown": F, "session.closed": F, "eval.stderr": F, "eval.error-status": F,
+			"eval.unknown-ns": F, "load-file.error": F}),
+		"clojure-clr": checktest.Merged(noJava, noInterrupts, noStdin, map[string]check.Verdict{"op.unknown-echo": W,
+			"session.across-connections": W, "session.isolated": F, "session.unknown": F, "session.closed": F}),
+		"basilisp": checktest.Merged(noJava, noInterrupts, noStdin, map[string]check.Verdict{"op.unknown-echo": W,
 			"session.across-connections": W, "session.isolated": F, "session.close": F, "session.unknown": F,
-			"session.closed": F, "eval.multiple-forms": F, "eval.unknown-ns": F, "stdin.need-input": S,
-			"stdin.roundtrip": S, "stdin.eof": S, "wire.canonical": W}),
+			"session.closed": F, "eval.stderr": F, "eval.multiple-forms": F, "eval.unknown-ns": F}),
+		"jank": checktest.Merged(noJava, noInterrupts, noStdin, map[string]check.Verdict{"describe.required-ops": F,
+			"op.unknown-echo": W, "session.across-connections": W, "session.isolated": F, "session.close": F,
+			"session.unknown": F, "session.closed": F, "eval.multiple-forms": F, "eval.unknown-ns": F, "wire.canonical": W}),
+		"let-go": checktest.Merged(noJava, noInterrupts, noStdin, map[string]check.Verdict{"describe.versions": W,
+			"op.unknown-echo": W, "session.isolated": F, "session.unknown": F, "session.closed": F, "eval.stderr": F,
+			"eval.error-status": F, "eval.error-report": W, "eval.multiple-forms": F, "eval.unknown-ns": F,
+			"load-file.error": F}),
 		"dialtone": checktest.Merged(noJava, noLanguage, map[string]check.Verdict{"op.unknown-echo": W, "session.close": F,
 			"eval.stderr": F, "eval.multiple-forms": F}),
 		"repartee": checktest.Merged(noJava, noLanguage, map[string]check.Verdict{"op.unknown-echo": W, "session.close": F,

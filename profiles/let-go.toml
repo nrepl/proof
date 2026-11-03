@@ -1,0 +1,63 @@
+# let-go's nREPL server, for a Clojure dialect written in Go. Needs lg
+# (from a release of let-go) on PATH. lg -n starts the terminal REPL as
+# well, which reads the stdin proof keeps open.
+name = "let-go"
+homepage = "https://github.com/nooga/let-go"
+
+[launch]
+command = ["lg", "-n", "-p", "0"]
+port-pattern = 'nREPL server started on port (\d+)'
+startup-timeout = "30s"
+
+[capabilities]
+namespaces = true
+clojure = true
+
+[snippets.value]
+code = "(+ 1 2)"
+value = "3"
+
+[snippets.stdout]
+code = '(print "proof")'
+out = "proof"
+
+[snippets.stderr]
+code = '(binding [*out* *err*] (print "proof"))'
+err = "proof"
+
+[snippets.throw]
+code = '(throw (ex-info "proof" {}))'
+
+[snippets.define]
+code = "(def proof-answer 42)"
+use = "proof-answer"
+value = "42"
+
+# Leaves session-local state behind. There's no *1, but the current
+# namespace belongs to the session in nREPL.
+[snippets.session-state]
+code = "(in-ns 'proof-marker)"
+use = "(ns-name *ns*)"
+value = "proof-marker"
+
+[snippets.multiple]
+code = "1 2"
+values = ["1", "2"]
+
+# Prints something and then runs until it's interrupted.
+[snippets.sleep]
+code = '(do (print "proof") (sleep 60000))'
+out = "proof"
+
+# A prefix, and something it completes to.
+[snippets.completion]
+code = "printl"
+value = "println"
+
+# A function to look up.
+[snippets.lookup]
+code = "println"
+
+# The version of let-go, for the report.
+[snippets.version]
+code = '(System/getProperty "let-go.version")'

@@ -419,6 +419,12 @@ func TestScenarioShapes(t *testing.T) {
 		}},
 		{"last-value", "1 2 3", func(r nrepl.Response) bool { return slices.Equal(r.Values(), []string{"3"}) }},
 		{"last-value", "1 (/ 1 0) 3", func(r nrepl.Response) bool { return len(r.Values()) == 0 && r.HasStatus("eval-error") }},
+		{"no-eval-error", "(/ 1 0)", func(r nrepl.Response) bool {
+			return r.Err() != "" && r.First("ex").Has("ex") && !r.HasStatus("eval-error")
+		}},
+		{"ansi-errors", "(/ 1 0)", func(r nrepl.Response) bool {
+			return strings.HasPrefix(r.Err(), "\x1b[1;31merror:\x1b[0m Execution error") && r.HasStatus("eval-error")
+		}},
 	}
 	for _, tc := range cases {
 		t.Run(tc.scenario, func(t *testing.T) {
@@ -431,16 +437,21 @@ func TestScenarioShapes(t *testing.T) {
 }
 
 func TestDescribe(t *testing.T) {
+	dict := map[string]any{"major": int64(0), "minor": int64(1), "incremental": int64(0), "version-string": "0.1.0-dev"}
+	strings := map[string]any{"major": "0", "minor": "1", "incremental": "0"}
 	cases := []struct {
 		scenarios []string
 		ops       []string
-		version   any
+		versions  map[string]any
 	}{
 		{nil, []string{"clone", "close", "completions", "describe", "eval", "interrupt", "load-file", "lookup", "stdin"},
-			map[string]any{"major": int64(0), "minor": int64(1), "incremental": int64(0), "version-string": "0.1.0-dev"}},
-		{[]string{"no-close-op", "no-interrupt", "no-stdin", "string-versions"}, []string{"clone", "completions", "describe", "eval", "load-file", "lookup"}, "0.1.0-dev"},
+			map[string]any{"proof": dict}},
+		{[]string{"no-close-op", "no-interrupt", "no-stdin", "string-versions"}, []string{"clone", "completions", "describe", "eval", "load-file", "lookup"},
+			map[string]any{"proof": "0.1.0-dev"}},
 		{[]string{"read-line-throws"}, []string{"clone", "close", "completions", "describe", "eval", "interrupt", "load-file", "lookup"},
-			map[string]any{"major": int64(0), "minor": int64(1), "incremental": int64(0), "version-string": "0.1.0-dev"}},
+			map[string]any{"proof": dict}},
+		{[]string{"no-version-string"}, []string{"clone", "close", "completions", "describe", "eval", "interrupt", "load-file", "lookup", "stdin"},
+			map[string]any{"proof": strings, "nrepl": strings}},
 	}
 	for _, tc := range cases {
 		c := connect(t, serveFor(t, tc.scenarios...))
@@ -449,15 +460,15 @@ func TestDescribe(t *testing.T) {
 		if got := slices.Sorted(maps.Keys(ops)); !slices.Equal(got, tc.ops) {
 			t.Errorf("%v: ops %v, want %v", tc.scenarios, got, tc.ops)
 		}
-		versions, _ := r.Get("versions").(map[string]any)
-		if !reflect.DeepEqual(versions["proof"], tc.version) {
-			t.Errorf("%v: versions %v", tc.scenarios, versions)
+		if versions := r.Get("versions"); !reflect.DeepEqual(versions, tc.versions) {
+			t.Errorf("%v: versions %v, want %v", tc.scenarios, versions, tc.versions)
 		}
 	}
 }
 
 func TestOpsTheScenariosTakeAway(t *testing.T) {
-	for scenario, op := range map[string]string{"no-interrupt": "interrupt", "no-stdin": "stdin", "read-line-throws": "stdin"} {
+	for scenario, op := range map[string]string{"no-interrupt": "interrupt", "no-stdin": "stdin", "read-line-throws": "stdin",
+		"read-line-waits": "stdin"} {
 		c := connect(t, serveFor(t, scenario))
 		if r := request(t, c, nrepl.Message{"op": op, "session": clone(t, c)}); !r.HasStatus("unknown-op") {
 			t.Errorf("%s: %s got %v", scenario, op, r.Status())
@@ -583,10 +594,39 @@ func TestBrokenFramesEndTheConnection(t *testing.T) {
 	}
 }
 
+// With read-line-waits, reading input waits for a line that never comes,
+// without asking for it, until the eval is interrupted. What the code
+// printed before goes out first, even when replies are batched.
+func TestReadingInputWaits(t *testing.T) {
+	c := connect(t, serveFor(t, "read-line-waits", "batched-writes"))
+	session := clone(t, c)
+	id, err := c.Send(nrepl.Message{"op": "eval", "code": `(do (print "reading") (read-line))`, "session": session})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := c.WaitFor(func(m nrepl.Message) bool { return m.Str("id") == id && m.Has("out") }, timeout); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := c.WaitFor(func(m nrepl.Message) bool { return m.Str("id") == id && !m.Has("out") }, 100*time.Millisecond); err == nil {
+		t.Fatalf("the eval went on: %v", received(c, id).Messages)
+	}
+	request(t, c, nrepl.Message{"op": "interrupt", "session": session, "interrupt-id": id})
+	if r, err := c.Collect(id, timeout); err != nil || !r.HasStatus("interrupted") {
+		t.Errorf("interrupting the eval: %v %v", r.Messages, err)
+	}
+}
+
 func TestScenarioNames(t *testing.T) {
-	for _, names := range [][]string{{"no-such-thing"}, {"ns-fallback", "ns-error"}, {"byte-writes", "batched-writes"}} {
-		if _, err := Listen("127.0.0.1:0", "0", names); err == nil {
-			t.Errorf("%v: no error", names)
+	if _, err := Listen("127.0.0.1:0", "0", []string{"no-such-thing"}); err == nil {
+		t.Error("no error for a scenario that doesn't exist")
+	}
+	for _, group := range conflicts {
+		for i, a := range group {
+			for _, b := range group[i+1:] {
+				if _, err := behave([]string{a, b}); err == nil {
+					t.Errorf("%s and %s: no error", a, b)
+				}
+			}
 		}
 	}
 	for _, sc := range Scenarios() {
