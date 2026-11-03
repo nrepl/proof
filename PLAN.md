@@ -153,7 +153,12 @@ clients.
   [GitHub Pages](https://nrepl.github.io/proof/), with the version of
   each server, which comes from the new `version` snippet. `proof matrix
   -html` builds the same page out of any reports.
-- nbb and let-go, which are easy to install in CI.
+- Done: nbb and let-go, and scenarios for what they do differently in
+  `proof serve`. Neither says `eval-error` when the code throws or sends
+  what it prints to stderr, nbb stops taking connections after a frame
+  that isn't a dict, and let-go shares the current namespace between
+  sessions and doesn't list `interrupt` in `describe` (even though it
+  has it).
 
 ### More Clients
 

@@ -283,13 +283,22 @@ func (s *Server) describe() map[string]any {
 			listed[op] = map[string]any{}
 		}
 	}
-	var version any = s.version
-	if !s.b.stringVersions {
-		version = versionDict(s.version)
+	versions := map[string]any{"proof": versionDict(s.version)}
+	switch {
+	case s.b.stringVersions:
+		versions["proof"] = s.version
+	case s.b.noVersionString:
+		// What let-go says, for itself and for nREPL.
+		d := versionDict(s.version)
+		delete(d, "version-string")
+		for k, v := range d {
+			d[k] = fmt.Sprint(v)
+		}
+		versions = map[string]any{"proof": d, "nrepl": d}
 	}
 	return map[string]any{
 		"ops":      listed,
-		"versions": map[string]any{"proof": version},
+		"versions": versions,
 		"aux":      map[string]any{"current-ns": "user"},
 		"status":   done,
 	}
@@ -436,11 +445,22 @@ func (s *Server) eval(c *conn, req nrepl.Message, sess *session) {
 // that ends the eval. In error-with-done that message carries the error.
 func (s *Server) fail(reply func(map[string]any), t *thrown, ns string) map[string]any {
 	text, ex, rootEx := errorReport(t, ns)
+	if s.b.ansiErrors {
+		// let-go's bold red.
+		text = "\x1b[1;31merror:\x1b[0m " + text
+	}
 	reply(map[string]any{"err": text})
-	fields := map[string]any{"ex": ex, "root-ex": rootEx, "status": []any{"eval-error"}}
+	fields := map[string]any{"ex": ex, "root-ex": rootEx}
+	status := []any{"eval-error"}
+	if s.b.noEvalError {
+		status = nil
+	}
 	if s.b.errorWithDone {
-		fields["status"] = []any{"eval-error", "done"}
+		fields["status"] = append(status, "done")
 		return fields
+	}
+	if status != nil {
+		fields["status"] = status
 	}
 	reply(fields)
 	return map[string]any{"status": done}
@@ -489,15 +509,20 @@ func (s *Server) runEval(sess *session, j *job) {
 			}
 		},
 		readLine: func(interrupts <-chan struct{}) (any, error) {
+			ask := func() { reply(map[string]any{"status": []any{"need-input"}}) }
 			switch s.b.stdin {
 			case throwOnRead:
-				// What jank says.
+				// What jank says. nbb has no read-line at all.
 				return nil, throwf("clojure.lang.ExceptionInfo", "TODO: port read-line")
 			case endOfInput:
 				// The end of the server's own stdin.
 				return nil, nil
+			case waitForTerminal:
+				// A line from the terminal, which never comes, as there's no
+				// stdin op to send one. What's been printed goes out first.
+				ask = c.flush
 			}
-			line, ok, err := sess.readLine(s.ctx, interrupts, func() { reply(map[string]any{"status": []any{"need-input"}}) })
+			line, ok, err := sess.readLine(s.ctx, interrupts, ask)
 			switch {
 			case err != nil:
 				return nil, err

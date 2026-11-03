@@ -1,0 +1,63 @@
+# nbb's nREPL server, ClojureScript on Node.js. Needs nbb on PATH:
+#
+#   npm install -g nbb
+name = "nbb"
+homepage = "https://github.com/babashka/nbb"
+
+[launch]
+command = ["nbb", "nrepl-server", ":port", "0"]
+port-pattern = 'nREPL server started on port (\d+)'
+startup-timeout = "30s"
+
+[capabilities]
+namespaces = true
+clojure = true
+
+[snippets.value]
+code = "(+ 1 2)"
+value = "3"
+
+[snippets.stdout]
+code = '(print "proof")'
+out = "proof"
+
+[snippets.stderr]
+code = '(binding [*print-fn* *print-err-fn*] (print "proof"))'
+err = "proof"
+
+[snippets.throw]
+code = '(throw (ex-info "proof" {}))'
+
+[snippets.define]
+code = "(def proof-answer 42)"
+use = "proof-answer"
+value = "42"
+
+# Leaves session-local state behind (*1 is per session).
+[snippets.session-state]
+code = ":proof-marker"
+use = "*1"
+value = ":proof-marker"
+
+[snippets.multiple]
+code = "1 2"
+values = ["1", "2"]
+
+# Prints something and then runs until it's interrupted. nbb waits for
+# a promise before it replies.
+[snippets.sleep]
+code = '(do (print "proof") (js/Promise. (fn [resolve] (js/setTimeout resolve 60000))))'
+out = "proof"
+
+# A prefix, and something it completes to.
+[snippets.completion]
+code = "printl"
+value = "println"
+
+# A function to look up.
+[snippets.lookup]
+code = "println"
+
+# The version of nbb, for the report.
+[snippets.version]
+code = "(nbb.core/version)"

@@ -21,7 +21,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        profile: [clojure, babashka, clojure-clr, basilisp, jank, dialtone, repartee]
+        profile: [clojure, babashka, nbb, clojure-clr, basilisp, jank, let-go, dialtone, repartee]
     steps:
       # The reports say which version of proof made them. Go 1.24 and newer
       # work it out from the tags and the commit, like for go install.
@@ -48,6 +48,13 @@ jobs:
         with:
           bb: latest
 
+      - if: matrix.profile == 'nbb'
+        uses: actions/setup-node@v7
+        with:
+          node-version: lts/*
+      - if: matrix.profile == 'nbb'
+        run: npm install -g nbb
+
       - if: matrix.profile == 'clojure-clr'
         uses: actions/setup-dotnet@v6
         with:
@@ -72,6 +79,15 @@ jobs:
           echo "deb [signed-by=/etc/apt/trusted.gpg.d/jank.gpg] https://ppa.jank-lang.org $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/jank.list > /dev/null
           sudo apt-get update
           sudo apt-get install -y jank
+
+      - if: matrix.profile == 'let-go'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # The binary from the latest release, which is called lg.
+          gh release download --repo nooga/let-go --pattern '*_linux_amd64.tar.gz' --pattern checksums.txt --dir let-go
+          (cd let-go && sha256sum --check --ignore-missing checksums.txt && tar xzf let-go_*_linux_amd64.tar.gz lg)
+          echo "$PWD/let-go" >> "$GITHUB_PATH"
 
       - if: matrix.profile == 'dialtone' || matrix.profile == 'repartee'
         uses: erlef/setup-beam@v1.24.1
@@ -127,7 +143,7 @@ jobs:
         run: |
           # The reference implementation goes first.
           reports=()
-          for p in clojure babashka clojure-clr basilisp jank dialtone repartee; do
+          for p in clojure babashka nbb clojure-clr basilisp jank let-go dialtone repartee; do
             [ -f "reports/report-$p.json" ] && reports+=("reports/report-$p.json")
           done
           bin/proof matrix "${reports[@]}" > matrix.md

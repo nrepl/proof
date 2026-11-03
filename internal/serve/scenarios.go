@@ -20,7 +20,9 @@ type Scenario struct {
 // behavior is the set of scenarios a server runs with.
 type behavior struct {
 	splitOutput, emptyMessages, lastValue, noErr, errorWithDone bool
-	noOpEcho, noCloseOp, noInterrupt, stringVersions            bool
+	noEvalError, ansiErrors                                     bool
+	noOpEcho, noCloseOp, noInterrupt                            bool
+	stringVersions, noVersionString                             bool
 	noSessionClosed, sharedState, socketSessions, anySession    bool
 	nsFallback, nsError, eofError                               bool
 	dropQueued, interruptElsewhere, lateException               bool
@@ -35,9 +37,10 @@ const (
 	// askForInput is what nREPL does: ask with need-input, then read what
 	// the stdin op sends.
 	askForInput stdinMode = iota
-	// The other two are for servers without a stdin op.
+	// The others are for servers without a stdin op.
 	endOfInput
 	throwOnRead
+	waitForTerminal
 )
 
 // scenario is a Scenario, the behavior it sets, and the profiles of the
@@ -54,36 +57,49 @@ var catalog = []scenario{
 		func(b *behavior) { b.splitOutput = true }, []string{"basilisp"}},
 	{Scenario{"empty-messages", "Replies to eval include messages with nothing but id and session", "jank"},
 		func(b *behavior) { b.emptyMessages = true }, []string{"jank"}},
-	{Scenario{"last-value", "Only the value of the last form is sent", "Basilisp, jank, dialtone"},
-		func(b *behavior) { b.lastValue = true }, []string{"basilisp", "jank", "dialtone"}},
-	{Scenario{"no-err", "What the code prints to stderr never reaches the client", "Basilisp, dialtone, repartee"},
-		func(b *behavior) { b.noErr = true }, []string{"basilisp", "dialtone", "repartee"}},
+	{Scenario{"last-value", "Only the value of the last form is sent", "Basilisp, jank, let-go, dialtone"},
+		func(b *behavior) { b.lastValue = true }, []string{"basilisp", "jank", "let-go", "dialtone"}},
+	{Scenario{"no-err", "What the code prints to stderr never reaches the client", "Basilisp, nbb, let-go, dialtone, repartee"},
+		func(b *behavior) { b.noErr = true }, []string{"basilisp", "nbb", "let-go", "dialtone", "repartee"}},
 	{Scenario{"error-with-done", "eval-error comes in the same message as done", "jank"},
 		func(b *behavior) { b.errorWithDone = true }, []string{"jank"}},
-	{Scenario{"no-op-echo", "Replies to unknown ops don't say which op it was", "ClojureCLR, Basilisp, jank, dialtone, repartee"},
-		func(b *behavior) { b.noOpEcho = true }, []string{"clojure-clr", "basilisp", "jank", "dialtone", "repartee"}},
+	{Scenario{"no-eval-error", "An error comes with err and ex, but without the eval-error status", "nbb, let-go"},
+		func(b *behavior) { b.noEvalError = true }, []string{"nbb", "let-go"}},
+	{Scenario{"ansi-errors", "Error messages are colored with ANSI escape codes", "let-go"},
+		func(b *behavior) { b.ansiErrors = true }, []string{"let-go"}},
+	{Scenario{"no-op-echo", "Replies to unknown ops don't say which op it was",
+		"ClojureCLR, Basilisp, jank, nbb, let-go, dialtone, repartee"},
+		func(b *behavior) { b.noOpEcho = true }, []string{"clojure-clr", "basilisp", "jank", "nbb", "let-go", "dialtone", "repartee"}},
 	{Scenario{"no-close-op", "describe doesn't list close, even though close works", "jank"},
 		func(b *behavior) { b.noCloseOp = true }, []string{"jank"}},
-	{Scenario{"no-interrupt", "There's no interrupt op", "ClojureCLR, Basilisp, jank"},
-		func(b *behavior) { b.noInterrupt = true }, []string{"clojure-clr", "basilisp", "jank"}},
+	{Scenario{"no-interrupt", "There's no interrupt op",
+		"ClojureCLR, Basilisp, jank, nbb, and let-go doesn't list it, nor stop an eval with it"},
+		func(b *behavior) { b.noInterrupt = true }, []string{"clojure-clr", "basilisp", "jank", "nbb", "let-go"}},
 	{Scenario{"no-stdin", "There's no stdin op, and reading input gets nil right away",
 		"ClojureCLR and Basilisp started in the background, as they read their own stdin, where Basilisp gets an empty string"},
 		func(b *behavior) { b.stdin = endOfInput }, []string{"clojure-clr", "basilisp"}},
-	{Scenario{"read-line-throws", "There's no stdin op, and reading input throws", "jank"},
-		func(b *behavior) { b.stdin = throwOnRead }, []string{"jank"}},
+	{Scenario{"read-line-throws", "There's no stdin op, and reading input throws", "jank, and nbb, which has no read-line"},
+		func(b *behavior) { b.stdin = throwOnRead }, []string{"jank", "nbb"}},
+	{Scenario{"read-line-waits", "There's no stdin op, and reading input waits until the eval is interrupted or its session closed",
+		"let-go, which reads the terminal it runs in, where its own REPL takes the lines"},
+		func(b *behavior) { b.stdin = waitForTerminal }, []string{"let-go"}},
 	{Scenario{"string-versions", "versions.proof is a plain string rather than a dict",
 		"Babashka for versions.babashka, ClojureCLR for versions.clojure.tools.nrepl"},
 		func(b *behavior) { b.stringVersions = true }, []string{"babashka", "clojure-clr"}},
+	{Scenario{"no-version-string", "versions has proof and nrepl with the numbers of their versions as strings, but no version-string",
+		"let-go for versions.let-go and versions.nrepl"},
+		func(b *behavior) { b.noVersionString = true }, []string{"let-go"}},
 	{Scenario{"no-session-closed", "close replies with done alone, without session-closed", "Basilisp, jank, dialtone, repartee"},
 		func(b *behavior) { b.noSessionClosed = true }, []string{"basilisp", "jank", "dialtone", "repartee"}},
-	{Scenario{"shared-state", "Sessions on the same connection share *1, *e and the current namespace", "ClojureCLR, Basilisp, jank"},
-		func(b *behavior) { b.sharedState = true }, []string{"clojure-clr", "basilisp", "jank"}},
+	{Scenario{"shared-state", "Sessions on the same connection share *1, *e and the current namespace",
+		"ClojureCLR, Basilisp, jank, nbb, and let-go for the current namespace"},
+		func(b *behavior) { b.sharedState = true }, []string{"clojure-clr", "basilisp", "jank", "nbb", "let-go"}},
 	{Scenario{"socket-sessions", "A session only exists on the connection that cloned it", "ClojureCLR, Basilisp, jank"},
 		func(b *behavior) { b.socketSessions = true }, []string{"clojure-clr", "basilisp", "jank"}},
-	{Scenario{"any-session", "Requests for sessions that don't exist run in a new session", "ClojureCLR, Basilisp, jank"},
-		func(b *behavior) { b.anySession = true }, []string{"clojure-clr", "basilisp", "jank"}},
-	{Scenario{"ns-fallback", "An eval in a namespace that doesn't exist runs in the current one", "jank"},
-		func(b *behavior) { b.nsFallback = true }, []string{"jank"}},
+	{Scenario{"any-session", "Requests for sessions that don't exist run in a new session", "ClojureCLR, Basilisp, jank, nbb, let-go"},
+		func(b *behavior) { b.anySession = true }, []string{"clojure-clr", "basilisp", "jank", "nbb", "let-go"}},
+	{Scenario{"ns-fallback", "An eval in a namespace that doesn't exist runs in the current one", "jank, nbb, let-go"},
+		func(b *behavior) { b.nsFallback = true }, []string{"jank", "nbb", "let-go"}},
 	{Scenario{"ns-error", "An eval in a namespace that doesn't exist fails without namespace-not-found", "Basilisp"},
 		func(b *behavior) { b.nsError = true }, []string{"basilisp"}},
 	{Scenario{"eof-error", "Reading past the end of input fails instead of returning nil", "nREPL 1.7.0"},
@@ -123,7 +139,7 @@ type Preset struct {
 }
 
 // servers are the profiles of the servers with scenarios.
-var servers = []string{"clojure", "babashka", "clojure-clr", "basilisp", "jank", "dialtone", "repartee"}
+var servers = []string{"clojure", "babashka", "nbb", "clojure-clr", "basilisp", "jank", "let-go", "dialtone", "repartee"}
 
 // Presets lists every server proof serve can behave like.
 func Presets() []Preset {
@@ -150,8 +166,10 @@ func Like(name string, extra []string) ([]string, error) {
 	return append(presets[i].Scenarios, extra...), nil
 }
 
-// conflicts are scenarios that can't be combined.
-var conflicts = [][2]string{{"ns-fallback", "ns-error"}, {"byte-writes", "batched-writes"}, {"no-stdin", "read-line-throws"}}
+// conflicts are groups of scenarios that can't be combined, as each of
+// them does the same thing differently.
+var conflicts = [][]string{{"ns-fallback", "ns-error"}, {"byte-writes", "batched-writes"},
+	{"no-stdin", "read-line-throws", "read-line-waits"}, {"string-versions", "no-version-string"}}
 
 func behave(names []string) (behavior, error) {
 	var b behavior
@@ -164,9 +182,9 @@ func behave(names []string) (behavior, error) {
 		catalog[i].set(&b)
 		chosen[name] = true
 	}
-	for _, pair := range conflicts {
-		if chosen[pair[0]] && chosen[pair[1]] {
-			return b, fmt.Errorf("scenarios %s don't go together", strings.Join(pair[:], " and "))
+	for _, group := range conflicts {
+		if both := slices.DeleteFunc(slices.Clone(group), func(name string) bool { return !chosen[name] }); len(both) > 1 {
+			return b, fmt.Errorf("scenarios %s don't go together", strings.Join(both, " and "))
 		}
 	}
 	return b, nil
