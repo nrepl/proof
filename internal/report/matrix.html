@@ -46,12 +46,28 @@ body {
   font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
 }
 a { color: var(--link); }
-header, footer { max-width: 60rem; }
+header, footer, .tab > p, dl { max-width: 60rem; }
 h1 { margin: 0 0 8px; font-size: 1.75rem; }
 p { margin: 0 0 12px; }
 dl { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; margin: 0 0 20px; }
 dt { font-weight: 600; }
 dd { margin: 0; }
+nav { display: flex; gap: 4px; margin: 0 0 16px; border-bottom: 1px solid var(--line); }
+nav a {
+  margin-bottom: -1px;
+  padding: 6px 14px;
+  border-bottom: 2px solid transparent;
+  color: var(--muted);
+  font-weight: 600;
+  text-decoration: none;
+}
+nav a:hover { color: var(--fg); }
+main:not(:has(#clients:target)) a[href="#checks"],
+main:has(#clients:target) a[href="#clients"] { color: var(--fg); border-bottom-color: var(--link); }
+/* The checks are the first tab. The margin keeps a link to a tab from
+   scrolling the page. */
+.tab { display: none; scroll-margin-top: 100vh; }
+.tab:target, main:not(:has(.tab:target)) #checks { display: block; }
 .scroll { overflow: auto; max-height: 85vh; border: 1px solid var(--line); border-radius: 6px; }
 table { border-collapse: collapse; width: 100%; }
 th, td { padding: 4px 10px; border-bottom: 1px solid var(--line); text-align: left; }
@@ -97,6 +113,13 @@ footer { margin-top: 16px; color: var(--muted); }
 <a href="https://github.com/nrepl/proof">proof</a>, which are mostly about
 what the clients people use (CIDER, Calva, Conjure, vim-fireplace, REPLy and
 so on) need from a server.</p>
+</header>
+<main>
+<nav>
+<a href="#checks">Checks</a>
+<a href="#clients">Clients</a>
+</nav>
+<section id="checks" class="tab">
 <dl>
 <dt><span class="pass">pass</span></dt><dd>The server does what the clients need.</dd>
 <dt><span class="fail">fail</span></dt><dd>Some client won't work properly with the server, or users lose data.</dd>
@@ -105,12 +128,26 @@ so on) need from a server.</p>
 <dt><span class="error">error</span></dt><dd>proof couldn't run the check.</dd>
 </dl>
 <p>Hover over a check to see why it matters, and over a verdict for the details.</p>
-</header>
 <div class="scroll">
 <table>
-<!-- table -->
+<!-- checks -->
 </table>
 </div>
+</section>
+<section id="clients" class="tab">
+<p>Each cell says how many of the checks a client depends on the server
+passes, out of the ones that apply to it. Those are the client's own checks
+(e.g. <code>cider.connect</code>), which send what the client sends, the
+checks that link to its code, and the ones every client depends on (e.g.
+<code>eval.value</code>).</p>
+<p>Hover over a number to see the checks the server didn't pass.</p>
+<div class="scroll">
+<table>
+<!-- clients -->
+</table>
+</div>
+</section>
+</main>
 <footer>
 <p>Made with <!-- proof -->.</p>
 </footer>
