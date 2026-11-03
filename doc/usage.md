@@ -229,11 +229,17 @@ you'll probably want to put the reference implementation first. The
 version of each server comes from the `version` snippet of its profile,
 if it has one (see [Profiles](profiles.md#snippets)).
 
+With `-html` you'll get a web page instead, where hovering over a check
+shows why it matters and hovering over a verdict shows its details:
+
+```shell
+$ proof matrix -html clojure.json my-server.json > matrix.html
+```
+
 > [!TIP]
-> proof's own CI builds such a matrix for all the profiles in the
-> repository on a daily basis. You can find it in the summary of the
-> Compatibility workflow on the
-> [Actions tab](https://github.com/nrepl/proof/actions).
+> proof's own CI builds such a page for all the profiles in the
+> repository on a daily basis. You can find it at
+> [nrepl.github.io/proof](https://nrepl.github.io/proof/).
 
 ## Checking Your Client
 

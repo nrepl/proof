@@ -54,7 +54,7 @@ Usage:
   proof run [flags] PROFILE           run the checks against the server a profile describes
   proof proxy [flags] [PROFILE]       check what a client sends to a server, by sitting between them
   proof serve [flags] [SCENARIO...]   be a server for a client's tests, acting like other servers where asked
-  proof matrix REPORT...              build a Markdown compatibility matrix from JSON reports
+  proof matrix [-html] REPORT...      build a compatibility matrix (Markdown or a web page) from JSON reports
   proof list                          list every check, rule and scenario
   proof version
 
@@ -350,7 +350,13 @@ func allIDs() []string {
 	return ids
 }
 
-func matrix(paths []string) int {
+func matrix(args []string) int {
+	fs := newFlags("matrix", "REPORT...", os.Stderr)
+	html := fs.Bool("html", false, "write a web page instead of a Markdown table")
+	paths, err := parseArgs(fs, args)
+	if err != nil {
+		return flagStatus(err)
+	}
 	if len(paths) == 0 {
 		fmt.Fprintln(os.Stderr, "proof matrix: expected one or more JSON reports (from proof run -json)")
 		return 2
@@ -363,6 +369,13 @@ func matrix(paths []string) int {
 			return 2
 		}
 		reports = append(reports, r)
+	}
+	if *html {
+		if err := report.HTML(os.Stdout, reports); err != nil {
+			fmt.Fprintln(os.Stderr, "proof:", err)
+			return 2
+		}
+		return 0
 	}
 	report.Matrix(os.Stdout, reports)
 	return 0

@@ -50,7 +50,8 @@ The [profiles](profiles) folder has complete profiles for nREPL itself,
 Babashka, Basilisp, ClojureCLR, jank, dialtone (Erlang) and repartee
 (Elixir), which you can use as a starting point. They come with proof as
 well, so `proof run babashka` will check Babashka (provided you have it
-installed).
+installed). The [compatibility matrix](https://nrepl.github.io/proof/)
+shows how all of them do, and it's updated every day.
 
 Now you can run the checks:
 
