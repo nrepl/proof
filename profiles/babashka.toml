@@ -61,3 +61,7 @@ value = "println"
 # A function to look up.
 [snippets.lookup]
 code = "println"
+
+# The version of bb, for the report.
+[snippets.version]
+code = '(System/getProperty "babashka.version")'

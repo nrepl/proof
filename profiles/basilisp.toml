@@ -55,3 +55,7 @@ value = "println"
 # A function to look up.
 [snippets.lookup]
 code = "println"
+
+# The version of Basilisp, for the report.
+[snippets.version]
+code = '(do (import importlib.metadata) (importlib.metadata/version "basilisp"))'

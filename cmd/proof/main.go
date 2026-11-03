@@ -12,6 +12,7 @@ import (
 	"os/signal"
 	"path"
 	"runtime/debug"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -22,6 +23,7 @@ import (
 	"github.com/nrepl/proof/internal/report"
 	"github.com/nrepl/proof/internal/serve"
 	"github.com/nrepl/proof/internal/server"
+	"github.com/nrepl/proof/nrepl"
 )
 
 // version is set for releases, with -ldflags "-X main.version=...".
@@ -208,12 +210,17 @@ func run(args []string) int {
 		addr = srv.Addr
 	}
 
+	ver, err := serverVersion(p, addr)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "proof: couldn't get the version of the server:", err)
+	}
 	env := &check.Env{Profile: p, Addr: addr}
 	started := time.Now()
 	results := check.Run(env, selected, checks.WireRules())
 	outcome := check.Apply(results, p.ExpectedFailures, opts.only == "")
 
-	r := report.Run{Proof: proofVersion(), Server: p.Name, Address: addr, Started: started, Results: results}
+	r := report.Run{Proof: proofVersion(), Server: p.Name, ServerVersion: ver, Address: addr, Started: started,
+		Results: results}
 	report.Text(os.Stdout, r, opts.verbose)
 	for _, id := range outcome.Stale {
 		fmt.Printf("%s is listed in expected-failures but didn't fail; remove it from the profile\n", id)
@@ -258,6 +265,38 @@ func startServer(p *profile.Profile) (*server.Server, error) {
 	srv, err = server.Start(ctx, p)
 	close(started)
 	return srv, err
+}
+
+// serverVersion evaluates the version snippet of the profile, if it has
+// one, in a session of its own. A string comes back without its quotes,
+// and on a single line.
+func serverVersion(p *profile.Profile, addr string) (string, error) {
+	sn, ok := p.Snippets["version"]
+	if !ok {
+		return "", nil
+	}
+	c, err := nrepl.Dial(addr, 5*time.Second)
+	if err != nil {
+		return "", err
+	}
+	defer c.Close()
+	clone, err := c.Request(nrepl.Message{"op": "clone"}, p.Timeout)
+	if err != nil {
+		return "", err
+	}
+	resp, err := c.Request(nrepl.Message{"op": "eval", "code": sn.Code, "session": clone.Str("new-session")}, p.Timeout)
+	if err != nil {
+		return "", err
+	}
+	values := resp.Values()
+	if len(values) == 0 {
+		return "", fmt.Errorf("the version snippet gave no value (status %v)", resp.Status())
+	}
+	v := values[len(values)-1]
+	if s, err := strconv.Unquote(v); err == nil {
+		v = s
+	}
+	return strings.Join(strings.Fields(v), " "), nil
 }
 
 // showDeath shows the output of a server that exited while proof was

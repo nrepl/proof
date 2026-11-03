@@ -72,6 +72,9 @@ value = "println"
 [snippets.lookup]
 code = "println"
 
+[snippets.version]
+code = "fizz.core/version"
+
 [expected-failures]
 "eval.multiple-forms" = "only the last value is returned, see #42"
 ```
@@ -84,7 +87,7 @@ code = "println"
 
 | Option | Required | Description |
 |---|---|---|
-| `name` | yes | The name of the server in reports and in the compatibility matrix. It's a good idea to include the version you're testing. |
+| `name` | yes | The name of the server in reports and in the compatibility matrix. If the profile always starts the same version of the server, it's a good idea to include it here (otherwise see the `version` snippet). |
 | `homepage` | no | The homepage of the server. |
 | `address` | no | The `host:port` of a server that's already running. When it's set proof connects to the server instead of starting it, and `[launch]` is ignored. The `-address` command-line option does the same. |
 | `timeout` | no | How long proof waits for each request to finish (i.e. for its `done`). It's a duration like `"10s"` (which is also the default). |
@@ -148,6 +151,7 @@ snippet is missing, all the checks that need it are skipped.
 | `sleep` | `code`, `out` | print `out` and then keep running for longer than the `timeout` (e.g. a minute), so there's something to interrupt | all the `interrupt.*` checks, `robust.disconnect`, `robust.sessions-at-once` |
 | `completion` | `code`, `value` | `code` is the start of a name, which completes to `value` | all the `completion.*` checks |
 | `lookup` | `code` | `code` is the name of a function | `lookup.lookup`, `lookup.info`, `lookup.eldoc` |
+| `version` | `code` | evaluate to the version of the server | none, proof shows the version in the report and in the compatibility matrix |
 
 A few tips for writing snippets:
 
@@ -178,6 +182,8 @@ A few tips for writing snippets:
 - The checks of completions and lookups evaluate `value` first, and send
   the `ns` that comes with its value (if any) along with their requests,
   just like clients send the namespace of the code they complete.
+- proof evaluates `version` before the checks, on a connection of its
+  own. If the version is a string, the quotes are dropped.
 - proof interrupts `sleep` as soon as its `out` arrives, so make sure
   your server sends the output right away (in Clojure that takes a
   `flush`, as there's no newline).

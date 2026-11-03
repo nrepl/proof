@@ -57,3 +57,7 @@ value = "lists:map"
 # A function to look up.
 [snippets.lookup]
 code = "lists:map"
+
+# The version of dialtone, for the report.
+[snippets.version]
+code = "element(2, application:get_key(dialtone, vsn))."
