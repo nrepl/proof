@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -14,9 +15,11 @@ import (
 
 func sampleRun(server string, verdicts ...check.Verdict) Run {
 	ids := []string{"describe.reply", "eval.value", "eval.ns"}
+	clients := [][]string{{"Calva", "CIDER"}, {"CIDER"}, {"CIDER", "Conjure"}}
 	r := Run{Proof: "test", Server: server, Address: "localhost:1", Started: time.Unix(0, 0)}
 	for i, v := range verdicts {
-		r.Results = append(r.Results, check.Result{ID: ids[i], Title: "title " + ids[i], Why: "why " + ids[i], Verdict: v})
+		r.Results = append(r.Results, check.Result{ID: ids[i], Title: "title " + ids[i], Why: "why " + ids[i],
+			Clients: clients[i], Verdict: v})
 	}
 	return r
 }
@@ -82,6 +85,11 @@ func TestMatrixAsAPage(t *testing.T) {
 		`<td class="pass">pass</td><td class="fail" title="gave no value">fail</td>`,
 		`<td class="skip">skip</td>`,
 		`<td>3/3</td><td>1/2</td>`,
+		// The clients the most checks break come first.
+		`<tr><th>Client</th><th>Alpha</th>`,
+		`<tr><th scope="row">CIDER</th><td class="pass">3/3</td><td class="fail" title="eval.value: title eval.value">1/2</td></tr>
+<tr><th scope="row">Calva</th><td class="pass">1/1</td><td class="pass">1/1</td></tr>
+<tr><th scope="row">Conjure</th><td class="pass">1/1</td><td class="skip">skip</td></tr>`,
 		"Made with proof test on 2026-11-03.",
 	} {
 		if !strings.Contains(got, want) {
@@ -165,5 +173,39 @@ func TestTranscriptShowsWhoHungUp(t *testing.T) {
 	want := "  ->      0ms {id \"1\", op \"describe\"}\n  ->      5ms closed the connection\n"
 	if buf.String() != want {
 		t.Errorf("got:\n%s\nwant:\n%s", buf.String(), want)
+	}
+}
+
+// A client fares as badly as the worst of the checks that break it.
+func TestClientsGetTheWorstVerdict(t *testing.T) {
+	reports := []Report{{Run: Run{Server: "Alpha"}, Results: []jsonResult{
+		{ID: "a.x", Title: "x", Verdict: check.Errored, Clients: []string{"CIDER"}},
+		{ID: "a.y", Title: "y", Verdict: check.Pass, Clients: []string{"CIDER"}},
+		{ID: "a.z", Title: "z", Verdict: check.Failed, Clients: []string{"Calva"}},
+	}}}
+	verdict, score, missed := newTable(reports).client(0, "CIDER")
+	if verdict != check.Errored || score != "1/2" || !slices.Equal(missed, []string{"a.x: x (error)"}) {
+		t.Errorf("got %s %s %v", verdict, score, missed)
+	}
+	reports[0].Results[2].Clients = []string{"CIDER"}
+	verdict, score, missed = newTable(reports).client(0, "CIDER")
+	if verdict != check.Failed || score != "1/3" || !slices.Equal(missed, []string{"a.x: x (error)", "a.z: z"}) {
+		t.Errorf("got %s %s %v", verdict, score, missed)
+	}
+}
+
+// Reports made before proof named clients don't hide the clients that
+// later reports name.
+func TestClientsFromAnyReport(t *testing.T) {
+	reports := []Report{
+		{Run: Run{Server: "Old"}, Results: []jsonResult{{ID: "eval.value", Verdict: check.Pass}}},
+		{Run: Run{Server: "New"}, Results: []jsonResult{{ID: "eval.value", Verdict: check.Pass, Clients: []string{"CIDER"}}}},
+	}
+	tbl := newTable(reports)
+	if got := tbl.clients(); !slices.Equal(got, []string{"CIDER"}) {
+		t.Errorf("got clients %v", got)
+	}
+	if verdict, _, _ := tbl.client(0, "CIDER"); verdict != check.Skipped {
+		t.Errorf("a report without clients gives %s", verdict)
 	}
 }

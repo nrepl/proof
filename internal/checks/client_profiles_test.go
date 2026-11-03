@@ -2,6 +2,7 @@ package checks
 
 import (
 	"regexp"
+	"slices"
 	"strings"
 	"testing"
 
@@ -20,9 +21,10 @@ func TestClientProfiles(t *testing.T) {
 		ids[c.ID] = true
 	}
 	pinned := regexp.MustCompile(`^https://github\.com/[^/]+/[^/]+/blob/[0-9a-f]{40}/`)
-	// The links in refs.go to the same clients.
+	// The links in refs.go to the same clients, which is how a check knows
+	// the clients it breaks.
 	bases := map[string]string{"CIDER": ciderBase, "Calva": calvaSrc, "Conjure": conjureSrc, "vim-fireplace": fireplaceBase,
-		"REPLy": strings.TrimSuffix(replyBase, "eval_modes/nrepl.clj")}
+		"REPLy": strings.TrimSuffix(replyBase, "eval_modes/nrepl.clj"), "neorepl": neoreplBase}
 	for _, p := range clientProfiles() {
 		if p.Name == "" || !pinned.MatchString(p.Code) {
 			t.Errorf("%q needs a name and links pinned to a commit, got %q", p.Name, p.Code)
@@ -51,6 +53,56 @@ func TestClientProfiles(t *testing.T) {
 				if s.NewSession != "" {
 					sessions[s.NewSession] = true
 				}
+			}
+		}
+	}
+}
+
+// A check breaks the clients whose code it links to, or all of them when
+// it links to none, unless it's only a warning. Every client has checks
+// of its own.
+func TestChecksNameTheClientsTheyBreak(t *testing.T) {
+	var all []string
+	for _, p := range clientProfiles() {
+		all = append(all, p.Name)
+	}
+	clients := map[string][]string{}
+	var everyClient []string
+	note := func(id string, severity check.Severity, refs []check.Ref) {
+		clients[id] = ClientsOf(severity, refs)
+		if slices.Equal(clients[id], all) {
+			everyClient = append(everyClient, id)
+		}
+	}
+	for _, c := range All() {
+		note(c.ID, c.Severity, c.Refs)
+	}
+	for _, r := range WireRules() {
+		note(r.ID, r.Severity, r.Refs)
+	}
+	for id, want := range map[string][]string{
+		"cider.connect":     {"CIDER"},
+		"eval.error-status": {"Calva", "CIDER", "REPLy"},
+		// rebel-readline has no client profile.
+		"wire.error-terminal": {"REPLy"},
+		"describe.versions":   nil,
+	} {
+		if !slices.Equal(clients[id], want) {
+			t.Errorf("%s breaks %v, not %v", id, clients[id], want)
+		}
+	}
+	// A check gets here by linking to no client's code, which is also what
+	// happens when it links to a client without a profile, so each one has
+	// to be listed.
+	want := []string{"session.persistent", "eval.value", "eval.stdout", "eval.stderr", "eval.survives-error",
+		"eval.multiple-forms", "robust.bad-frames", "wire.bencode", "wire.dict"}
+	if !slices.Equal(everyClient, want) {
+		t.Errorf("the checks that break every client are %v, not %v", everyClient, want)
+	}
+	for _, p := range clientProfiles() {
+		for _, c := range p.Checks {
+			if !slices.Equal(clients[c.ID], []string{p.Name}) {
+				t.Errorf("%s breaks %v, not just %s", c.ID, clients[c.ID], p.Name)
 			}
 		}
 	}

@@ -141,6 +141,7 @@ type jsonResult struct {
 	Severity string        `json:"severity"`
 	Why      string        `json:"why"`
 	Refs     []check.Ref   `json:"refs"`
+	Clients  []string      `json:"clients,omitempty"`
 	Details  []string      `json:"details,omitempty"`
 	Notes    []string      `json:"notes,omitempty"`
 	Expected string        `json:"expected,omitempty"`
@@ -158,7 +159,7 @@ func JSON(w io.Writer, run Run) error {
 	for _, r := range run.Results {
 		out.Results = append(out.Results, jsonResult{
 			ID: r.ID, Title: r.Title, Verdict: r.Verdict, Severity: r.Severity.String(),
-			Why: r.Why, Refs: r.Refs, Details: r.Details, Notes: r.Notes, Expected: r.Expected,
+			Why: r.Why, Refs: r.Refs, Clients: r.Clients, Details: r.Details, Notes: r.Notes, Expected: r.Expected,
 			Millis: r.Duration.Milliseconds(),
 		})
 	}

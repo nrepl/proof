@@ -217,6 +217,9 @@ func run(args []string) int {
 	env := &check.Env{Profile: p, Addr: addr}
 	started := time.Now()
 	results := check.Run(env, selected, checks.WireRules())
+	for i, res := range results {
+		results[i].Clients = checks.ClientsOf(res.Severity, res.Refs)
+	}
 	outcome := check.Apply(results, p.ExpectedFailures, opts.only == "")
 
 	r := report.Run{Proof: proofVersion(), Server: p.Name, ServerVersion: ver, Homepage: p.Homepage,

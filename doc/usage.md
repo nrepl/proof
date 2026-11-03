@@ -236,6 +236,12 @@ shows why it matters and hovering over a verdict shows its details:
 $ proof matrix -html clojure.json my-server.json > matrix.html
 ```
 
+The page has a second tab for the clients proof knows about, with one
+row per client. There each server gets the number of checks it passes out
+of the ones that would break the client if they failed: the client's own
+checks (e.g. `cider.connect`), the checks that link to its code, and the
+ones every client depends on (e.g. `eval.value`).
+
 > [!TIP]
 > proof's own CI builds such a page for all the profiles in the
 > repository on a daily basis. You can find it at

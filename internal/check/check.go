@@ -286,6 +286,9 @@ type Result struct {
 	// Expected holds the reason from the profile's expected failures when
 	// the check failed as expected.
 	Expected string
+	// Clients names the clients that break when the server fails the
+	// check.
+	Clients []string
 }
 
 // Run runs checks one at a time, then grades the wire traffic they

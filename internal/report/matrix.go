@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"html"
 	"io"
+	"maps"
 	"os"
 	"slices"
 	"strings"
@@ -77,8 +78,14 @@ func (t table) place(id string) int {
 // passed returns how many checks the server of the i-th report passed,
 // out of the ones that ran.
 func (t table) passed(i int) string {
+	return score(slices.Collect(maps.Values(t.results[i])))
+}
+
+// score says how many of the results are passes, out of the ones that
+// ran.
+func score(results []jsonResult) string {
 	passed, ran := 0, 0
-	for _, res := range t.results[i] {
+	for _, res := range results {
 		if res.Verdict == check.Skipped {
 			continue
 		}
@@ -88,6 +95,62 @@ func (t table) passed(i int) string {
 		}
 	}
 	return fmt.Sprintf("%d/%d", passed, ran)
+}
+
+// clients are the clients that the checks say they break, the ones the
+// most checks break first. Every report has a say, as the ones made
+// before proof named clients don't name any.
+func (t table) clients() []string {
+	var names []string
+	counts := map[string]int{}
+	for _, id := range t.ids {
+		var named []string
+		for _, results := range t.results {
+			for _, name := range results[id].Clients {
+				if !slices.Contains(named, name) {
+					named = append(named, name)
+				}
+			}
+		}
+		for _, name := range named {
+			if counts[name] == 0 {
+				names = append(names, name)
+			}
+			counts[name]++
+		}
+	}
+	slices.SortStableFunc(names, func(a, b string) int { return counts[b] - counts[a] })
+	return names
+}
+
+// client is how the server of the i-th report fares with a client: the
+// score of the checks that break the client, and the ones it didn't
+// pass. The verdict is the worst of theirs, or skip when none ran.
+func (t table) client(i int, name string) (check.Verdict, string, []string) {
+	verdict := check.Pass
+	var ran []jsonResult
+	var missed []string
+	for _, id := range t.ids {
+		res, ok := t.results[i][id]
+		if !ok || res.Verdict == check.Skipped || !slices.Contains(res.Clients, name) {
+			continue
+		}
+		ran = append(ran, res)
+		switch res.Verdict {
+		case check.Failed:
+			verdict = check.Failed
+			missed = append(missed, res.ID+": "+res.Title)
+		case check.Errored:
+			if verdict != check.Failed {
+				verdict = check.Errored
+			}
+			missed = append(missed, res.ID+": "+res.Title+" (error)")
+		}
+	}
+	if len(ran) == 0 {
+		return check.Skipped, "skip", nil
+	}
+	return verdict, score(ran), missed
 }
 
 var cells = map[check.Verdict]string{
@@ -129,7 +192,7 @@ func escape(s string) string {
 	return strings.ReplaceAll(s, "|", `\|`)
 }
 
-// The page comes from matrix.html, with the table and the versions of
+// The page comes from matrix.html, with the tables and the versions of
 // proof where its markers are.
 //
 //go:embed matrix.html
@@ -137,24 +200,25 @@ var matrixPage string
 
 // HTML writes the same matrix as Matrix as a web page, with the checks
 // grouped like in the text report. The why of a check and the details of
-// a verdict show up when hovering over them.
+// a verdict show up when hovering over them. Another tab of the page has
+// how each client fares with the servers.
 func HTML(w io.Writer, reports []Report) error {
 	t := newTable(reports)
 	esc := html.EscapeString
-	var b strings.Builder
-	b.WriteString("<thead>\n<tr><th>Check</th>")
+	var servers strings.Builder
 	for _, r := range reports {
 		name := esc(r.Server)
 		if r.Homepage != "" {
 			name = fmt.Sprintf(`<a href="%s">%s</a>`, esc(r.Homepage), name)
 		}
-		fmt.Fprintf(&b, "<th>%s", name)
+		fmt.Fprintf(&servers, "<th>%s", name)
 		if r.ServerVersion != "" {
-			fmt.Fprintf(&b, `<span class="version">%s</span>`, esc(r.ServerVersion))
+			fmt.Fprintf(&servers, `<span class="version">%s</span>`, esc(r.ServerVersion))
 		}
-		b.WriteString("</th>")
+		servers.WriteString("</th>")
 	}
-	b.WriteString("</tr>\n</thead>\n<tbody>\n")
+	var b strings.Builder
+	fmt.Fprintf(&b, "<thead>\n<tr><th>Check</th>%s</tr>\n</thead>\n<tbody>\n", servers.String())
 	group := ""
 	for _, id := range t.ids {
 		if g, _, _ := strings.Cut(id, "."); g != group {
@@ -180,6 +244,18 @@ func HTML(w io.Writer, reports []Report) error {
 	}
 	b.WriteString("</tr>\n</tfoot>\n")
 
+	var c strings.Builder
+	fmt.Fprintf(&c, "<thead>\n<tr><th>Client</th>%s</tr>\n</thead>\n<tbody>\n", servers.String())
+	for _, client := range t.clients() {
+		fmt.Fprintf(&c, `<tr><th scope="row">%s</th>`, esc(client))
+		for i := range reports {
+			verdict, score, missed := t.client(i, client)
+			fmt.Fprintf(&c, `<td class="%s"%s>%s</td>`, verdict, titleAttr(strings.Join(missed, "\n")), score)
+		}
+		c.WriteString("</tr>\n")
+	}
+	c.WriteString("</tbody>\n")
+
 	var proofs []string
 	var latest time.Time
 	for _, r := range reports {
@@ -197,7 +273,8 @@ func HTML(w io.Writer, reports []Report) error {
 	if !latest.IsZero() {
 		made += " on " + latest.UTC().Format(time.DateOnly)
 	}
-	_, err := strings.NewReplacer("<!-- table -->\n", b.String(), "<!-- proof -->", esc(made)).WriteString(w, matrixPage)
+	_, err := strings.NewReplacer("<!-- checks -->\n", b.String(), "<!-- clients -->\n", c.String(),
+		"<!-- proof -->", esc(made)).WriteString(w, matrixPage)
 	return err
 }
 
