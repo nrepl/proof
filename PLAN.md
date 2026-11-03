@@ -144,8 +144,9 @@ and it covers the rest of what every editor sends: `interrupt`,
 
 ## 0.2.0
 
-The compatibility matrix gets a page of its own, and more servers and
-clients.
+The second release, which came out on 2026-11-03. The compatibility
+matrix has a page of its own now, with nbb and let-go in it, and there
+are client profiles for clojure-cli.repl and `bb repl --connect`.
 
 ### The Matrix
 

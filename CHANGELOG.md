@@ -2,6 +2,8 @@
 
 ## main (unreleased)
 
+## 0.2.0 (2026-11-03)
+
 ### Features
 
 - [#18](https://github.com/nrepl/proof/pull/18): The `version` snippet, so reports and the compatibility matrix show which version of a server proof checked.

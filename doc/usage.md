@@ -197,7 +197,7 @@ proof:
   steps:
     - uses: actions/checkout@v7
     # set up and build your server here
-    - uses: nrepl/proof@v0.1.0
+    - uses: nrepl/proof@v0.2.0
       with:
         profile: test/proof.toml
         args: -v
@@ -211,7 +211,7 @@ source with the Go that comes with the runner.
 
 Elsewhere you can download proof from its
 [releases](https://github.com/nrepl/proof/releases) or install it with
-`go install github.com/nrepl/proof/cmd/proof@v0.1.0`.
+`go install github.com/nrepl/proof/cmd/proof@v0.2.0`.
 
 ## Comparing Servers
 
