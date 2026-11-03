@@ -145,7 +145,7 @@ func TestPresetsGetTheColumnsOfTheirServers(t *testing.T) {
 	F, W, S := check.Failed, check.Warned, check.Skipped
 	noJava := map[string]check.Verdict{"fireplace.connect": S, "fireplace.eval": S}
 	noLanguage := map[string]check.Verdict{"eval.ns": S, "eval.unknown-ns": S, "cider.eval": S, "calva.eval": S,
-		"conjure.eval": S}
+		"conjure.eval": S, "clojure-cli.eval": S}
 	nreplInterrupts := map[string]check.Verdict{"interrupt.queued": F, "interrupt.other-connection": F, "wire.id": W,
 		"wire.after-done": W}
 	columns := map[string]map[string]check.Verdict{

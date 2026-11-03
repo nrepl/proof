@@ -7,6 +7,7 @@
 - [#18](https://github.com/nrepl/proof/pull/18): The `version` snippet, so reports and the compatibility matrix show which version of a server proof checked.
 - [#18](https://github.com/nrepl/proof/pull/18): `proof matrix -html`, which builds the compatibility matrix as a web page, and the daily matrix of the bundled profiles on [GitHub Pages](https://nrepl.github.io/proof/).
 - [#19](https://github.com/nrepl/proof/pull/19): Profiles for nbb and let-go, and scenarios for `proof serve` that act like them.
+- [#20](https://github.com/nrepl/proof/pull/20): Client profiles for clojure-cli.repl and `bb repl --connect`.
 
 ## 0.1.0 (2026-10-26)
 

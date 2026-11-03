@@ -162,10 +162,13 @@ clients.
 
 ### More Clients
 
-- [clojure-cli.repl](https://github.com/clojure/clojure-cli.repl), the
-  new client of the Clojure team, which doesn't handle `need-input` as
-  of 0.1.1.
-- `bb repl --connect`.
+- Done: [clojure-cli.repl](https://github.com/clojure/clojure-cli.repl),
+  the new client of the Clojure team. It's meant for the server that
+  comes with it, but it works with others too. As of 0.2.3 it still
+  doesn't answer `need-input`, so code reading input hangs, and it never
+  closes its session.
+- Done: `bb repl --connect`, which every server in the matrix gets
+  right.
 
 ## After 0.2.0
 

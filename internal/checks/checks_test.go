@@ -73,9 +73,9 @@ func TestWellBehavedServerPassesEverything(t *testing.T) {
 // other check and rule must still pass.
 func TestChecksCatchMisbehaviour(t *testing.T) {
 	F, W, S := check.Failed, check.Warned, check.Skipped
-	// What every client but REPLy goes through first.
+	// What every client but REPLy and clojure-cli.repl goes through first.
 	connects := map[string]check.Verdict{"cider.connect": F, "calva.connect": F, "conjure.connect": F, "fireplace.connect": F,
-		"neorepl.connect": F}
+		"neorepl.connect": F, "bb-repl.connect": F}
 	// The checks that can't tell whether the server has their op.
 	noLoadFile := skipped(loadFileChecks())
 	// The interrupt checks, and the ones that interrupt the sleep snippet
@@ -143,8 +143,8 @@ func TestChecksCatchMisbehaviour(t *testing.T) {
 		{"integer value", quirks{intValue: true}, checktest.Merged(clientsLoad, map[string]check.Verdict{
 			"wire.field-types": F, "eval.value": F, "eval.survives-error": F, "eval.multiple-forms": F,
 			"session.ephemeral": F, "session.persistent": F, "cider.eval": F, "cider.repl": F, "calva.eval": F, "conjure.eval": F, "fireplace.eval": F,
-			"neorepl.eval": F, "interrupt.survives": F, "interrupt.queued": F, "load-file.value": F, "robust.wrong-types": W,
-			"robust.disconnect": F, "robust.sessions-at-once": F, "robust.bad-frames": F})},
+			"neorepl.eval": F, "clojure-cli.eval": F, "interrupt.survives": F, "interrupt.queued": F, "load-file.value": F,
+			"robust.wrong-types": W, "robust.disconnect": F, "robust.sessions-at-once": F, "robust.bad-frames": F})},
 		// Like cider-nrepl's pprint.
 		{"printed values end in a newline", quirks{printNewline: true}, nil},
 		{"unsorted keys", quirks{unsortedKeys: true}, map[string]check.Verdict{"wire.canonical": W}},

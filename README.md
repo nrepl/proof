@@ -81,7 +81,8 @@ get a warning instead.
 Some of the checks send what a particular client sends, the way it sends
 it, e.g. `cider.connect` sends the requests CIDER sends while connecting.
 That way the report tells you directly whether CIDER, Calva, Conjure,
-vim-fireplace, REPLy and neorepl will work with your server.
+vim-fireplace, REPLy, neorepl, clojure-cli.repl and `bb repl --connect`
+will work with your server.
 
 ## Checking Clients
 
@@ -134,10 +135,11 @@ the replies). `-like jank` turns on all of jank's scenarios at once, and
 proof is still in its early days. Right now it covers the core of the
 protocol (`describe`, unknown ops, `eval`, sessions, `stdin`,
 `interrupt`, `load-file`, completions, lookups and the wire format),
-requests that go wrong, what CIDER, Calva, Conjure, vim-fireplace, REPLy
-and neorepl send while connecting, evaluating code and loading files,
-the requests clients send and the server differences clients have to
-deal with, and `proof list` will show you all the checks.
+requests that go wrong, what CIDER, Calva, Conjure, vim-fireplace, REPLy,
+neorepl, clojure-cli.repl and `bb repl --connect` send while connecting,
+evaluating code and loading files, the requests clients send and the
+server differences clients have to deal with, and `proof list` will show
+you all the checks.
 
 Check out [PLAN.md](PLAN.md) for what's next.
 
