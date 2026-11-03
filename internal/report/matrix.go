@@ -144,7 +144,11 @@ func HTML(w io.Writer, reports []Report) error {
 	var b strings.Builder
 	b.WriteString("<thead>\n<tr><th>Check</th>")
 	for _, r := range reports {
-		fmt.Fprintf(&b, "<th>%s", esc(r.Server))
+		name := esc(r.Server)
+		if r.Homepage != "" {
+			name = fmt.Sprintf(`<a href="%s">%s</a>`, esc(r.Homepage), name)
+		}
+		fmt.Fprintf(&b, "<th>%s", name)
 		if r.ServerVersion != "" {
 			fmt.Fprintf(&b, `<span class="version">%s</span>`, esc(r.ServerVersion))
 		}

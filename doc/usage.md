@@ -250,7 +250,7 @@ recording every message on the way:
 
 ```shell
 $ proof proxy -listen 127.0.0.1:7888 clojure
-Starting Clojure (nrepl/nrepl 1.8.0)...
+Starting nREPL...
 Forwarding 127.0.0.1:7888 to localhost:53613. Connect your client to 127.0.0.1:7888 and press Ctrl-C when it's done.
 ```
 

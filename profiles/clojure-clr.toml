@@ -6,7 +6,7 @@
 #
 # With .NET from Homebrew, also export
 # DOTNET_ROOT=/opt/homebrew/opt/dotnet/libexec or cljr can't find the runtime.
-name = "ClojureCLR (clr.tools.nrepl 0.1.2-alpha2)"
+name = "ClojureCLR"
 homepage = "https://github.com/clojure/clr.tools.nrepl"
 
 [launch]
@@ -64,3 +64,9 @@ value = "println"
 # A function to look up.
 [snippets.lookup]
 code = "println"
+
+# The version of ClojureCLR, for the report. clr.tools.nrepl doesn't know
+# its own (describe says 0.1.0-alpha1), and it's the tag in the command
+# anyway.
+[snippets.version]
+code = "(clojure-version)"

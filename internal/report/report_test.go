@@ -28,6 +28,7 @@ func sampleReports(t *testing.T) []Report {
 	t.Helper()
 	beta := sampleRun("Beta | Two", check.Pass, check.Failed, check.Skipped)
 	beta.ServerVersion = "2.0"
+	beta.Homepage = "https://example.com/beta?a&b"
 	beta.Started = time.Date(2026, 11, 3, 5, 0, 0, 0, time.UTC)
 	beta.Results[1].Details = []string{"gave no value"}
 	dir := t.TempDir()
@@ -74,7 +75,8 @@ func TestMatrixAsAPage(t *testing.T) {
 	}
 	got := buf.String()
 	for _, want := range []string{
-		`<th>Beta | Two<span class="version">2.0</span></th>`,
+		`<th>Alpha</th>`,
+		`<th><a href="https://example.com/beta?a&amp;b">Beta | Two</a><span class="version">2.0</span></th>`,
 		`<tr class="group"><th colspan="3">eval</th></tr>`,
 		`<th scope="row" title="why eval.value"><code>eval.value</code><span class="title">title eval.value</span></th>`,
 		`<td class="pass">pass</td><td class="fail" title="gave no value">fail</td>`,

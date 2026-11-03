@@ -59,12 +59,15 @@ thead th {
   position: sticky;
   top: 0;
   background: var(--head);
-  vertical-align: bottom;
-  min-width: 6rem;
+  vertical-align: top;
   z-index: 1;
 }
 thead th:first-child { left: 0; z-index: 2; }
-thead th + th { text-align: center; }
+/* Every server gets a column of the same width, and a long name or
+   version wraps rather than widening its column. */
+thead th + th { width: 7rem; min-width: 7rem; text-align: center; overflow-wrap: anywhere; }
+thead a { text-decoration: none; }
+thead a:hover { text-decoration: underline; }
 .version { display: block; color: var(--muted); font-weight: normal; font-size: 0.85em; }
 tbody th, tfoot th {
   position: sticky;
