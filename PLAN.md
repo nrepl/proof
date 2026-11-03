@@ -142,16 +142,18 @@ and it covers the rest of what every editor sends: `interrupt`,
 - [Spec Changes](doc/spec-changes.md) has everything the new checks found.
 - The docs cover the new checks and the release.
 
-## After 0.1.0
+## 0.2.0
 
-This is what's next for proof.
+The compatibility matrix gets a page of its own, and more servers and
+clients.
 
 ### The Matrix
 
-- Publish the compatibility matrix on GitHub Pages from the
-  Compatibility workflow, with the version of each server.
-- Add nbb and let-go, which are easy to install in CI, and then
-  shadow-cljs.
+- Done: the Compatibility workflow publishes the matrix on
+  [GitHub Pages](https://nrepl.github.io/proof/), with the version of
+  each server, which comes from the new `version` snippet. `proof matrix
+  -html` builds the same page out of any reports.
+- nbb and let-go, which are easy to install in CI.
 
 ### More Clients
 
@@ -159,6 +161,17 @@ This is what's next for proof.
   new client of the Clojure team, which doesn't handle `need-input` as
   of 0.1.1.
 - `bb repl --connect`.
+
+## After 0.2.0
+
+This is what's next for proof.
+
+### The Matrix
+
+- shadow-cljs.
+
+### More Clients
+
 - The client in `nrepl.cmdline`, which expects an exact list of statuses
   when interrupting an idle session.
 - vim-iced and rebel-readline.
@@ -173,23 +186,41 @@ This is what's next for proof.
 
 ### Upstream
 
-- The open pull requests based on proof's findings:
-  [spec.nrepl.org#6-#9](https://github.com/nrepl/spec.nrepl.org/pulls),
-  [nrepl-beam#1](https://github.com/nrepl/nrepl-beam/pull/1) and
-  [#2](https://github.com/nrepl/nrepl-beam/pull/2),
-  [neat#2](https://github.com/nrepl/neat/pull/2) and
-  [mezcaml#2](https://github.com/nrepl/mezcaml/pull/2).
+- The pull requests for the spec based on proof's findings,
+  [spec.nrepl.org#6-#9](https://github.com/nrepl/spec.nrepl.org/pulls).
+  The fixes for nrepl-beam, neat and mezcaml got merged on 2026-10-02,
+  except for [nrepl-beam#2](https://github.com/nrepl/nrepl-beam/pull/2),
+  which was closed when the branch it was based on went away and has to
+  be opened again.
 - Issues for the spec about the rest of [Spec Changes](doc/spec-changes.md),
   once the spec pull requests are settled.
 - nREPL: a release with
   [nrepl#498](https://github.com/nrepl/nrepl/pull/498), then
   [nrepl#477](https://github.com/nrepl/nrepl/issues/477) and
   [nrepl#183](https://github.com/nrepl/nrepl/issues/183), which has the
-  same cause as #498.
+  same cause as #498. The next eval after a client goes away in the
+  middle of one loses its `done` for the same reason as
+  [nrepl#509](https://github.com/nrepl/nrepl/issues/509). Babashka has
+  the same problem, which is why it fails `robust.disconnect` in a full
+  run, but not on its own.
 - CIDER and Calva accepting `ops` as a list, after which
   `describe.ops-dict` can allow both formats.
-- Issues for what the matrix finds in Basilisp and ClojureCLR, a few at
-  a time. jank's can go in a reply to jank#1104.
+- Reported on 2026-10-29:
+  [basilisp#1356](https://github.com/basilisp-lang/basilisp/issues/1356)
+  (no `no-info` for unknown symbols),
+  [basilisp#1357](https://github.com/basilisp-lang/basilisp/issues/1357)
+  (columns from 0),
+  [jank#1169](https://github.com/jank-lang/jank/issues/1169) (a request
+  that throws stops its connection from answering),
+  [conjure#802](https://github.com/Olical/conjure/issues/802) (no
+  `interrupt-id` in `interrupt`) and
+  [cider#4224](https://github.com/clojure-emacs/cider/issues/4224) (async
+  eldoc ignores `no-eldoc`).
+- ClojureCLR doesn't say `no-info` for unknown symbols either, but
+  clr.tools.nrepl takes bug reports on Ask Clojure rather than GitHub.
+- Calva waits for an eval of `java.version` in the main session before
+  it interrupts, so it looks like it can't interrupt an eval there. That
+  needs a run in VS Code before it gets reported.
 
 ## Further Down the Road
 
