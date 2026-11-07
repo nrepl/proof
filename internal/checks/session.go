@@ -34,16 +34,20 @@ func sessionChecks() []*check.Check {
 			Severity: check.Fail,
 			Why:      "Every REPL workflow depends on later evals seeing earlier definitions.",
 			Refs:     []check.Ref{specClone},
-			Snippets: []string{"define"},
+			Snippets: []string{"define", "value"},
 			Requires: []string{"session.clone"},
 			Run: func(t *check.T) {
 				s := t.Snippet("define")
+				other := t.Snippet("value")
 				c := t.Connect()
 				session := t.Session(c)
 				t.Eval(c, s.Code, session)
+				// An eval in between that doesn't use the definition, as a
+				// server that keeps only what each eval touches loses it there.
+				t.Eval(c, other.Code, session)
 				resp := t.Eval(c, s.Use, session)
 				if vs := resp.Values(); !slices.Equal(vs, []string{s.Value}) {
-					t.Violatef("after evaluating %q, %q gave %q, want [%q]", s.Code, s.Use, vs, s.Value)
+					t.Violatef("after evaluating %q and then %q, %q gave %q, want [%q]", s.Code, other.Code, s.Use, vs, s.Value)
 				}
 			},
 		},

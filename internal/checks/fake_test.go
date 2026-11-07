@@ -27,6 +27,7 @@ type quirks struct {
 	socketSessions   bool // sessions only exist on the connection that made them
 	noEphemeral      bool // requests without a session get unknown-session
 	lastValueOnly    bool
+	forgetUnused     bool // an eval keeps only the definitions it uses, like repartee did
 	dropErr          bool
 	outAfterValue    bool
 	noEvalError      bool // failed evals get no eval-error status
@@ -566,6 +567,7 @@ func (s *fakeServer) eval(c net.Conn, req nrepl.Message, local map[string]bool) 
 		}
 	}
 	var values []string
+	used := false
 	for _, form := range forms(code) {
 		value, out := "nil", ""
 		switch form {
@@ -610,8 +612,10 @@ func (s *fakeServer) eval(c net.Conn, req nrepl.Message, local map[string]bool) 
 		case "define":
 			sess.vars["answer"] = "42"
 			value = "#'user/answer"
+			used = true
 		case "use":
 			value = sess.vars["answer"]
+			used = true
 		case "read":
 			if !q.noNeedInput {
 				sess.pending = req
@@ -665,6 +669,9 @@ func (s *fakeServer) eval(c net.Conn, req nrepl.Message, local map[string]bool) 
 	}
 	if q.lastValueOnly && len(values) > 0 {
 		s.send(c, req, map[string]any{"value": values[len(values)-1], "ns": "user"})
+	}
+	if q.forgetUnused && !used {
+		sess.vars = map[string]string{}
 	}
 	finish()
 }
