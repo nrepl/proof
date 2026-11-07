@@ -7,6 +7,7 @@
 - [#22](https://github.com/nrepl/proof/pull/22): The bundled profiles have short names, with versions from their `version` snippets, so the servers in the compatibility matrix get columns of the same width.
 - [#24](https://github.com/nrepl/proof/pull/24): `session.persistent` evaluates something else between a definition and its use, so it catches a server that keeps only what each eval uses.
 - [#24](https://github.com/nrepl/proof/pull/24): The profile of repartee checks that each expression in an eval gets its own value.
+- [#24](https://github.com/nrepl/proof/pull/24): `proof serve -like dialtone` and `-like repartee` act like nREPL, as neither server has the quirks of its scenarios anymore.
 
 ## 0.2.0 (2026-11-03)
 
