@@ -119,6 +119,7 @@ func TestChecksCatchMisbehaviour(t *testing.T) {
 			"interrupt.other-connection": S, "robust.disconnect": S}},
 		{"no ephemeral sessions", quirks{noEphemeral: true}, map[string]check.Verdict{"session.ephemeral": F, "fireplace.connect": F}},
 		{"last value only", quirks{lastValueOnly: true}, map[string]check.Verdict{"eval.multiple-forms": F, "fireplace.connect": F}},
+		{"unused definitions forgotten", quirks{forgetUnused: true}, map[string]check.Verdict{"session.persistent": F}},
 		{"stderr dropped", quirks{dropErr: true}, map[string]check.Verdict{"eval.stderr": F}},
 		{"output after value", quirks{outAfterValue: true}, map[string]check.Verdict{"eval.stdout-order": W}},
 		{"no eval-error", quirks{noEvalError: true}, map[string]check.Verdict{"eval.error-status": F, "load-file.error": F}},
