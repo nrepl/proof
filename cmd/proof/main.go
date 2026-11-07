@@ -426,6 +426,9 @@ func list(w io.Writer) {
 			}
 			line += " " + s
 		}
+		if len(p.Scenarios) == 0 {
+			line += " none"
+		}
 		fmt.Fprintln(w, line)
 	}
 }

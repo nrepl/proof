@@ -187,7 +187,7 @@ different problem, which `proof serve` takes care of.
 own it behaves like nREPL, and scenarios make it behave like other
 servers where they differ from nREPL. The scenarios aren't made up.
 Every one of them is something a server in the compatibility matrix does
-(e.g. `last-value` is what Basilisp, jank and dialtone do), or something
+(e.g. `last-value` is what Basilisp, jank and let-go do), or something
 TCP can do to any server's replies (e.g. deliver a message in pieces).
 That keeps the list down to the differences a client will actually run
 into, and the tests make sure it stays that way. proof runs its own

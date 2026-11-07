@@ -220,16 +220,16 @@ failed evaluation doesn't include it either.
 
 ### `close`
 
-nREPL, Babashka, nbb, ClojureCLR and let-go respond with
-`session-closed`, while dialtone, Basilisp and jank respond with just
-`done` (so does the spec's example). vim-fireplace forgets a session only
+nREPL, Babashka, nbb, ClojureCLR, let-go and dialtone respond with
+`session-closed`, while Basilisp and jank respond with just `done` (so
+does the spec's example). vim-fireplace forgets a session only
 when it sees `session-closed`, and nREPL's own documentation tells
 clients to check for it, so it should be required.
 
 ### Closing an Unknown Session
 
-nREPL responds with `unknown-session`, dialtone with a plain `done`, and
-Babashka, nbb, ClojureCLR and let-go with `session-closed`. No client
+nREPL responds with `unknown-session`, and Babashka, nbb, ClojureCLR,
+let-go and dialtone with `session-closed`. No client
 cares about this, so we just need to pick one of them.
 
 ### Unknown Sessions

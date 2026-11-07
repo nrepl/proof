@@ -166,10 +166,8 @@ func TestPresetsGetTheColumnsOfTheirServers(t *testing.T) {
 			"op.unknown-echo": W, "session.isolated": F, "session.unknown": F, "session.closed": F, "eval.stderr": F,
 			"eval.error-status": F, "eval.error-report": W, "eval.multiple-forms": F, "eval.unknown-ns": F,
 			"load-file.error": F}),
-		"dialtone": checktest.Merged(noJava, noLanguage, map[string]check.Verdict{"op.unknown-echo": W, "session.close": F,
-			"eval.stderr": F, "eval.multiple-forms": F}),
-		"repartee": checktest.Merged(noJava, noLanguage, map[string]check.Verdict{"op.unknown-echo": W, "session.close": F,
-			"eval.stderr": F}),
+		"dialtone": checktest.Merged(noJava, noLanguage),
+		"repartee": checktest.Merged(noJava, noLanguage),
 	}
 	for name, want := range columns {
 		t.Run(name, func(t *testing.T) {

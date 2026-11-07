@@ -111,8 +111,8 @@ $ proof serve -listen 127.0.0.1:7888 last-value no-err
 ```
 
 Here it sends only the value of the last form (like Basilisp, jank and
-dialtone) and drops what the code prints to stderr (like Basilisp,
-dialtone and repartee). `proof list` shows all the scenarios, and every
+let-go) and drops what the code prints to stderr (like Basilisp, nbb
+and let-go). `proof list` shows all the scenarios, and every
 one of them is something a real server does (or something TCP can do to
 the replies). `-like jank` turns on all of jank's scenarios at once, and
 `proof list` shows the other servers it can behave like.
