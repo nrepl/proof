@@ -110,8 +110,8 @@ and it covers the rest of what every editor sends: `interrupt`,
   that doesn't exist, Basilisp counts columns from 0 and ClojureCLR's
   `file` isn't a URI, which Calva needs to jump to a definition.
 - Done: `proof serve` has nREPL's `completions` and `lookup`.
-- Not done: scenarios for cider-nrepl's ops in `proof serve`, so `-like`
-  could act like Babashka, Basilisp and ClojureCLR there too.
+- Not done: scenarios for cider-nrepl's ops in `proof serve` (see
+  [After 0.3.0](#after-030)).
 - [spec#9](https://github.com/nrepl/spec.nrepl.org/pull/9) (`arglists-str`
   and `no-info`) should be settled by then.
 
@@ -171,19 +171,44 @@ are client profiles for clojure-cli.repl and `bb repl --connect`.
 - Done: `bb repl --connect`, which every server in the matrix gets
   right.
 
-## After 0.2.0
+## 0.3.0
+
+The next release. It doesn't have a date yet.
+
+- Done: a clients tab on the matrix page, with how many of the checks
+  each client depends on every server passes
+  ([#23](https://github.com/nrepl/proof/pull/23)).
+- Done: short names for the bundled profiles and the versions of nREPL,
+  ClojureCLR and jank in the matrix
+  ([#22](https://github.com/nrepl/proof/pull/22)).
+- Done: `session.persistent` evaluates something else between a
+  definition and its use, the profile of repartee checks for a value per
+  expression, and `-like dialtone` and `-like repartee` act like nREPL,
+  as [nrepl-beam 0.2.0](https://github.com/nrepl/nrepl-beam/releases/tag/v0.2.0)
+  fixed what their scenarios were about
+  ([#24](https://github.com/nrepl/proof/pull/24)).
+
+## After 0.3.0
 
 This is what's next for proof.
 
 ### The Matrix
 
 - shadow-cljs.
+- The next release of nREPL. Its main branch closes the sessions of a
+  connection that goes away
+  ([nrepl#512](https://github.com/nrepl/nrepl/pull/512)) and stops an
+  eval at the first form that throws
+  ([nrepl#517](https://github.com/nrepl/nrepl/pull/517)). Both change
+  what clients can count on, so the `clojure` profile, `proof serve` and
+  [Spec Changes](doc/spec-changes.md) need another pass when it's out.
 
 ### More Clients
 
 - The client in `nrepl.cmdline`, which expects an exact list of statuses
   when interrupting an idle session.
-- vim-iced and rebel-readline.
+- [elin](https://github.com/liquidz/elin), which replaced vim-iced (its
+  repository is archived), and rebel-readline.
 
 ### proof serve in the Tests of Clients
 
@@ -192,29 +217,31 @@ This is what's next for proof.
   few `-like` servers and `byte-writes`, would catch problems with other
   servers before users run into them.
 - neat, mezcaml and neorepl should do the same.
+- Scenarios for cider-nrepl's ops, so `-like` can act like Babashka,
+  Basilisp and ClojureCLR there too.
 
 ### Upstream
 
 - The pull requests for the spec based on proof's findings,
-  [spec.nrepl.org#6-#9](https://github.com/nrepl/spec.nrepl.org/pulls).
-  The fixes for nrepl-beam, neat and mezcaml got merged on 2026-10-02,
-  except for [nrepl-beam#2](https://github.com/nrepl/nrepl-beam/pull/2),
-  which was closed when the branch it was based on went away and has to
-  be opened again.
+  [spec.nrepl.org#6-#9](https://github.com/nrepl/spec.nrepl.org/pulls),
+  are still open. The fixes for nrepl-beam, neat and mezcaml are all
+  merged.
 - Issues for the spec about the rest of [Spec Changes](doc/spec-changes.md),
   once the spec pull requests are settled.
 - nREPL: a release with
-  [nrepl#498](https://github.com/nrepl/nrepl/pull/498), then
-  [nrepl#477](https://github.com/nrepl/nrepl/issues/477) and
-  [nrepl#183](https://github.com/nrepl/nrepl/issues/183), which has the
-  same cause as #498. The next eval after a client goes away in the
-  middle of one loses its `done` for the same reason as
-  [nrepl#509](https://github.com/nrepl/nrepl/issues/509). Babashka has
-  the same problem, which is why it fails `robust.disconnect` in a full
-  run, but not on its own.
+  [nrepl#498](https://github.com/nrepl/nrepl/pull/498). Still open are
+  [nrepl#477](https://github.com/nrepl/nrepl/issues/477),
+  [nrepl#183](https://github.com/nrepl/nrepl/issues/183) (which has the
+  same cause as #498),
+  [nrepl#503](https://github.com/nrepl/nrepl/issues/503),
+  [nrepl#504](https://github.com/nrepl/nrepl/issues/504) and
+  [nrepl#506](https://github.com/nrepl/nrepl/issues/506).
+  [nrepl#509](https://github.com/nrepl/nrepl/issues/509) is closed, so
+  `robust.disconnect` is worth another run against the main branch.
+  Babashka fails that check in a full run too, but not on its own.
 - CIDER and Calva accepting `ops` as a list, after which
   `describe.ops-dict` can allow both formats.
-- Reported on 2026-10-29:
+- The issues reported on 2026-10-29 are all closed:
   [basilisp#1356](https://github.com/basilisp-lang/basilisp/issues/1356)
   (no `no-info` for unknown symbols),
   [basilisp#1357](https://github.com/basilisp-lang/basilisp/issues/1357)
@@ -224,7 +251,17 @@ This is what's next for proof.
   [conjure#802](https://github.com/Olical/conjure/issues/802) (no
   `interrupt-id` in `interrupt`) and
   [cider#4224](https://github.com/clojure-emacs/cider/issues/4224) (async
-  eldoc ignores `no-eldoc`).
+  eldoc ignores `no-eldoc`). The expected failures in the profiles go
+  away as the fixes get released.
+- Not reported yet: nbb stops taking connections after a frame that isn't
+  a dict, nbb and let-go don't say `eval-error` or send what's printed to
+  stderr, let-go's `interrupt` doesn't stop an eval and its sessions
+  share the current namespace, and clojure-cli.repl doesn't answer
+  `need-input` or close its session.
+- No answer so far on
+  [reply#218](https://github.com/trptcolin/reply/issues/218),
+  [reply#219](https://github.com/trptcolin/reply/issues/219) and
+  [vim-fireplace#429](https://github.com/tpope/vim-fireplace/issues/429).
 - ClojureCLR doesn't say `no-info` for unknown symbols either, but
   clr.tools.nrepl takes bug reports on Ask Clojure rather than GitHub.
 - Calva waits for an eval of `java.version` in the main session before
