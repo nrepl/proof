@@ -2,6 +2,8 @@
 
 ## main (unreleased)
 
+## 0.3.0 (2026-11-25)
+
 ### Features
 
 - [#23](https://github.com/nrepl/proof/pull/23): A clients tab on the compatibility matrix page, with how many of the checks each client depends on every server passes.

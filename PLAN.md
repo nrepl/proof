@@ -173,7 +173,8 @@ are client profiles for clojure-cli.repl and `bb repl --connect`.
 
 ## 0.3.0
 
-The next release. It doesn't have a date yet.
+The third release, which came out on 2026-11-25. The matrix page shows
+how each client fares with every server now.
 
 - Done: a clients tab on the matrix page, with how many of the checks
   each client depends on every server passes
